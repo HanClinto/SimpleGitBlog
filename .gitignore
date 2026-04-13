@@ -2,3 +2,8 @@ __pycache__/
 *.py[cod]
 _site/
 .env
+
+# Personal ingestor configuration — keep these local, never commit real values.
+# Copy the corresponding .example file and fill in your own IDs/usernames.
+config/youtube_playlists.txt
+config/hackernews.txt

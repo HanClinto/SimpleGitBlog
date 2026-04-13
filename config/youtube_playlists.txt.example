@@ -1,0 +1,22 @@
+# YouTube playlist IDs for the "My Watching" section.
+#
+# HOW TO USE
+# ----------
+# The recommended approach is to set YOUTUBE_PLAYLIST_IDS as a GitHub Actions
+# repository Variable (repo Settings → Secrets and variables → Variables) and
+# YOUTUBE_API_KEY as a repository Secret. That way your playlist IDs are never
+# committed to source control, so forks of this blog start with a clean slate.
+#
+# For local development only, you may create the file
+#   config/youtube_playlists.txt
+# (without the .example extension) and add one playlist ID per line.
+# That filename is gitignored, so it will never be committed.
+#
+# HOW TO FIND A PLAYLIST ID
+# --------------------------
+# Open the playlist on YouTube and copy the "list=" parameter from the URL:
+#   https://www.youtube.com/playlist?list=PLAYLIST_ID_HERE
+#
+# EXAMPLE ENTRIES (remove the leading # to activate)
+# ----------------------------------------------------
+# PLILJALPUFXDmE84sBSVlGqcaDFRJ2RZ5Q

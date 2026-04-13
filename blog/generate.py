@@ -1,28 +1,46 @@
 """
-SimpleGitBlog - Static blog generator powered by GitHub Issues.
+SimpleGitBlog - Static blog generator.
+
+Orchestrates all configured ingestors, merges their output, and renders a
+static site with posts grouped into thematic sections.
 
 Usage:
-    Set environment variables and run:
-        python blog/generate.py
+    python blog/generate.py
 
 Environment variables:
-    GITHUB_TOKEN       Optional. GitHub personal access token for higher API rate limits.
-    GITHUB_REPOSITORY  Required. Repository in "owner/repo" format.
-    OUTPUT_DIR         Optional. Output directory for the generated site. Default: _site
+    GITHUB_TOKEN         Optional. GitHub personal access token (higher API rate limits).
+    GITHUB_REPOSITORY    Required. Repository in "owner/repo" format.
+    OUTPUT_DIR           Optional. Output directory. Default: _site
+
+    YOUTUBE_API_KEY      Optional. YouTube Data API v3 key.
+                         Required to enable the "My Watching" section.
+    YOUTUBE_PLAYLIST_IDS Optional. Comma-separated YouTube playlist IDs.
+                         Set this as a GitHub Actions repository variable
+                         (Settings → Variables) so it is NOT stored in source.
+
+    HN_USERNAME          Optional. Hacker News username.
+                         Required to enable the "My Reading" section.
+                         Set this as a GitHub Actions repository variable
+                         (Settings → Variables) so it is NOT stored in source.
 """
 
 import os
-import re
 import shutil
 import sys
-import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
-import bleach
-import markdown
-import requests
-from jinja2 import Environment, FileSystemLoader
+# ---------------------------------------------------------------------------
+# Ensure the repo root is on sys.path so package imports work when this
+# script is invoked directly (python blog/generate.py) from the repo root.
+# ---------------------------------------------------------------------------
+_REPO_ROOT = Path(__file__).parent.parent.resolve()
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from jinja2 import Environment, FileSystemLoader  # noqa: E402
+
+from blog.ingestors import github_issues, hackernews, youtube  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -32,332 +50,20 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 TEMPLATES_DIR = SCRIPT_DIR / "templates"
 STATIC_DIR = SCRIPT_DIR / "static"
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
-BLOCKED_USERS_FILE = CONFIG_DIR / "blocked_users.txt"
 
 # ---------------------------------------------------------------------------
-# Bleach sanitization config
+# Section definitions — order controls display order on the site
 # ---------------------------------------------------------------------------
 
-ALLOWED_TAGS = [
-    "p", "br", "strong", "em", "b", "i", "u", "s", "del", "ins",
-    "h1", "h2", "h3", "h4", "h5", "h6",
-    "ul", "ol", "li", "dl", "dt", "dd",
-    "blockquote", "pre", "code",
-    "table", "thead", "tbody", "tr", "th", "td",
-    "a", "img",
-    "hr", "div", "span",
-]
-
-ALLOWED_ATTRS = {
-    "a": ["href", "title", "rel"],
-    "img": ["src", "alt", "title", "width", "height"],
-    "th": ["align"],
-    "td": ["align"],
-    "code": ["class"],
-    "div": ["class"],
-    "span": ["class"],
-}
-
-# Schemes we allow in href/src attributes
-ALLOWED_PROTOCOLS = {"http", "https", "mailto"}
-
-# Attributes allowed on wildcard (any) tag
-ALLOWED_ATTRS_WILDCARD: list[str] = []
-
-# ---------------------------------------------------------------------------
-# Markdown extensions
-# ---------------------------------------------------------------------------
-
-MD_EXTENSIONS = [
-    "fenced_code",
-    "tables",
-    "nl2br",
-    "attr_list",
-    "toc",
+_SECTION_DEFS = [
+    {"key": "writing",    "title": "My Writing",  "icon": "✍️"},
+    {"key": "watching",   "title": "My Watching", "icon": "📺"},
+    {"key": "reading",    "title": "My Reading",  "icon": "📰"},
 ]
 
 # ---------------------------------------------------------------------------
-# GitHub API helpers
+# Static asset helpers
 # ---------------------------------------------------------------------------
-
-BLOG_LABEL = "blog-post"
-ALLOWED_POSTERS_FILE = CONFIG_DIR / "allowed_posters.txt"
-
-
-def _github_headers(token: str | None) -> dict:
-    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    return headers
-
-
-def _paginate(url: str, headers: dict, params: dict | None = None) -> list:
-    """Fetch all pages from a GitHub API endpoint."""
-    results = []
-    params = dict(params or {})
-    params.setdefault("per_page", 100)
-    while url:
-        response = requests.get(url, headers=headers, params=params, timeout=30)
-        response.raise_for_status()
-        results.extend(response.json())
-        # Follow GitHub's Link header for next page
-        url = None
-        params = {}  # params are baked into the next URL
-        link_header = response.headers.get("Link", "")
-        for part in link_header.split(","):
-            part = part.strip()
-            if 'rel="next"' in part:
-                match = re.search(r"<([^>]+)>", part)
-                if match:
-                    url = match.group(1)
-    return results
-
-
-def fetch_blog_posts(repo: str, headers: dict) -> list:
-    """Return all open issues labelled 'blog-post', newest first."""
-    url = f"https://api.github.com/repos/{repo}/issues"
-    params = {"labels": BLOG_LABEL, "state": "open", "sort": "created", "direction": "desc"}
-    issues = _paginate(url, headers, params)
-    # Exclude pull requests (GitHub returns PRs as issues)
-    return [i for i in issues if "pull_request" not in i]
-
-
-def fetch_comments(repo: str, issue_number: int, headers: dict) -> list:
-    """Return all comments for an issue."""
-    url = f"https://api.github.com/repos/{repo}/issues/{issue_number}/comments"
-    return _paginate(url, headers)
-
-
-# ---------------------------------------------------------------------------
-# Blocked users
-# ---------------------------------------------------------------------------
-
-def load_blocked_users() -> set:
-    """Load blocked usernames from config file."""
-    blocked = set()
-    if not BLOCKED_USERS_FILE.exists():
-        return blocked
-    for line in BLOCKED_USERS_FILE.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            blocked.add(line.lower())
-    return blocked
-
-
-# ---------------------------------------------------------------------------
-# Allowed posters
-# ---------------------------------------------------------------------------
-
-def load_allowed_posters() -> tuple[set[str], bool]:
-    """
-    Load the set of usernames allowed to author blog posts.
-
-    Returns:
-        (allowed_set, open_mode) where:
-        - open_mode is True when '*' appears in the file (all users allowed).
-        - allowed_set contains explicitly listed usernames (lowercase).
-          The repo owner is always implicitly included at call sites; it is
-          NOT added here so that this function stays pure / testable.
-    """
-    allowed: set[str] = set()
-    open_mode = False
-    if not ALLOWED_POSTERS_FILE.exists():
-        return allowed, open_mode
-    for line in ALLOWED_POSTERS_FILE.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line == "*":
-            open_mode = True
-        else:
-            allowed.add(line.lower())
-    return allowed, open_mode
-
-
-def is_allowed_poster(login: str, repo_owner: str, allowed: set, open_mode: bool) -> bool:
-    """Return True if *login* is permitted to author a blog post."""
-    if open_mode:
-        return True
-    if login.lower() == repo_owner.lower():
-        return True
-    return login.lower() in allowed
-
-
-# ---------------------------------------------------------------------------
-# Content processing
-# ---------------------------------------------------------------------------
-
-def _is_safe_url(url: str) -> bool:
-    """Return True if the URL scheme is in the allowed set (or is relative)."""
-    parsed = urllib.parse.urlparse(url.strip())
-    scheme = parsed.scheme.lower()
-    return scheme in ALLOWED_PROTOCOLS or scheme == ""
-
-
-def _attr_filter(tag: str, name: str, value: str) -> bool:
-    """
-    bleach attribute callable — returns True to keep an attribute, False to strip it.
-
-    Attributes are kept only when:
-    - They appear in ALLOWED_ATTRS for the given tag, AND
-    - Any URL-bearing attribute (href on <a>, src on <img>) uses an allowed scheme.
-
-    Returning False causes bleach to remove the attribute entirely from the output,
-    which is the correct behavior for security — it never substitutes or escapes the value.
-    """
-    allowed_for_tag = ALLOWED_ATTRS.get(tag, [])
-    if name not in allowed_for_tag:
-        return False
-    if tag == "a" and name == "href":
-        return _is_safe_url(value)
-    if tag == "img" and name == "src":
-        return _is_safe_url(value)
-    return True
-
-
-def sanitize_html(raw_html: str) -> str:
-    """Sanitize HTML using bleach with a strict allowlist."""
-    cleaned = bleach.clean(
-        raw_html,
-        tags=ALLOWED_TAGS,
-        attributes=_attr_filter,
-        strip=True,
-        strip_comments=True,
-    )
-    # Add rel="nofollow noopener noreferrer" to every <a> tag.
-    # The (\s[^>]*)? group makes the attributes portion optional so bare <a> is also matched.
-    cleaned = re.sub(
-        r'<a(\s[^>]*)?>',
-        lambda m: '<a' + _ensure_rel(m.group(1) or "") + ">",
-        cleaned,
-    )
-    return cleaned
-
-
-def _ensure_rel(attrs_str: str) -> str:
-    """Prepend a safe space+attrs block that always includes rel=nofollow."""
-    rel_value = "nofollow noopener noreferrer"
-    if re.search(r'\brel=', attrs_str, re.IGNORECASE):
-        attrs_str = re.sub(
-            r'\brel=["\'][^"\']*["\']',
-            f'rel="{rel_value}"',
-            attrs_str,
-            flags=re.IGNORECASE,
-        )
-    else:
-        attrs_str = attrs_str.rstrip() + f' rel="{rel_value}"'
-    return (" " + attrs_str.strip()) if attrs_str.strip() else f' rel="{rel_value}"'
-
-
-def markdown_to_safe_html(text: str) -> str:
-    """Convert Markdown text to sanitized HTML."""
-    if not text:
-        return ""
-    md = markdown.Markdown(extensions=MD_EXTENSIONS)
-    raw_html = md.convert(text)
-    return sanitize_html(raw_html)
-
-
-def extract_excerpt(text: str, max_chars: int = 280) -> str:
-    """Return a plain-text excerpt from a Markdown body."""
-    # Strip Markdown syntax roughly
-    plain = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
-    plain = re.sub(r"`[^`]+`", "", plain)
-    plain = re.sub(r"!\[.*?\]\(.*?\)", "", plain)
-    plain = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", plain)
-    plain = re.sub(r"[#*_~>]+", "", plain)
-    plain = " ".join(plain.split())
-    if len(plain) > max_chars:
-        plain = plain[:max_chars].rsplit(" ", 1)[0] + "…"
-    return plain
-
-
-def format_date(iso_string: str) -> str:
-    """Convert ISO 8601 date string to a human-readable format."""
-    try:
-        dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-        return dt.strftime("%B %d, %Y").replace(" 0", " ")
-    except (ValueError, AttributeError):
-        return iso_string
-
-
-def format_datetime(iso_string: str) -> str:
-    """Convert ISO 8601 datetime string for <time> datetime attribute."""
-    try:
-        dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-        return dt.isoformat()
-    except (ValueError, AttributeError):
-        return iso_string
-
-
-# ---------------------------------------------------------------------------
-# Cross-link: detect forks
-# ---------------------------------------------------------------------------
-
-def build_fork_blog_url(fork_owner: str, repo_name: str) -> str:
-    """
-    Given a commenter who may have forked the repo, return the likely
-    GitHub Pages URL for their fork's blog.
-    """
-    return f"https://{fork_owner}.github.io/{repo_name}/"
-
-
-def fetch_fork_owners(repo: str, headers: dict) -> set:
-    """Return set of GitHub usernames who have forked this repo."""
-    url = f"https://api.github.com/repos/{repo}/forks"
-    try:
-        forks = _paginate(url, headers, {"per_page": 100})
-        return {f["owner"]["login"].lower() for f in forks}
-    except requests.HTTPError:
-        return set()
-
-
-# ---------------------------------------------------------------------------
-# Site generation
-# ---------------------------------------------------------------------------
-
-def process_issue(issue: dict, comments_raw: list, blocked: set, fork_owners: set, repo_name: str) -> dict:
-    """Transform a raw GitHub issue + comments into template-ready data."""
-    # Filter blocked users from comments
-    comments = [
-        c for c in comments_raw
-        if c["user"]["login"].lower() not in blocked
-    ]
-
-    processed_comments = []
-    for c in comments:
-        login = c["user"]["login"]
-        is_forker = login.lower() in fork_owners
-        processed_comments.append({
-            "id": c["id"],
-            "author": login,
-            "author_url": f"https://github.com/{login}",
-            "avatar_url": c["user"]["avatar_url"],
-            "created_at": c["created_at"],
-            "created_at_fmt": format_date(c["created_at"]),
-            "created_at_iso": format_datetime(c["created_at"]),
-            "body_html": markdown_to_safe_html(c.get("body") or ""),
-            "fork_blog_url": build_fork_blog_url(login, repo_name) if is_forker else None,
-        })
-
-    author = issue["user"]["login"]
-    return {
-        "number": issue["number"],
-        "title": issue["title"],
-        "author": author,
-        "author_url": f"https://github.com/{author}",
-        "avatar_url": issue["user"]["avatar_url"],
-        "created_at": issue["created_at"],
-        "created_at_fmt": format_date(issue["created_at"]),
-        "created_at_iso": format_datetime(issue["created_at"]),
-        "updated_at": issue.get("updated_at", issue["created_at"]),
-        "body_html": markdown_to_safe_html(issue.get("body") or ""),
-        "excerpt": extract_excerpt(issue.get("body") or ""),
-        "comments": processed_comments,
-        "comment_count": len(processed_comments),
-        "github_issue_url": issue["html_url"],
-        "labels": [lbl["name"] for lbl in issue.get("labels", [])],
-    }
 
 
 def copy_static(output_dir: Path) -> None:
@@ -371,55 +77,66 @@ def write_nojekyll(output_dir: Path) -> None:
     (output_dir / ".nojekyll").write_text("", encoding="utf-8")
 
 
+# ---------------------------------------------------------------------------
+# Site generation
+# ---------------------------------------------------------------------------
+
+
 def generate_site(
     repo: str,
     token: str | None,
     output_dir: Path,
+    youtube_api_key: str | None = None,
+    youtube_playlist_ids: str | None = None,
+    hn_usernames: list[str] | None = None,
 ) -> None:
-    headers = _github_headers(token)
-    repo_owner = repo.split("/")[0]
     repo_name = repo.split("/")[-1]
     repo_url = f"https://github.com/{repo}"
 
-    print(f"Fetching blog posts from {repo}…")
-    raw_issues = fetch_blog_posts(repo, headers)
-    print(f"  Found {len(raw_issues)} labeled issue(s).")
+    # --- GitHub Issues (My Writing) — always runs ---
+    print("Fetching GitHub Issues (My Writing)…")
+    writing_posts = github_issues.ingest(repo, token, CONFIG_DIR)
+    print(f"  {len(writing_posts)} post(s) ingested from GitHub Issues.")
 
-    blocked = load_blocked_users()
-    print(f"  Blocked users: {blocked or '(none)'}")
-
-    allowed_posters, open_mode = load_allowed_posters()
-    if open_mode:
-        print("  Allowed posters: * (open mode — all users)")
+    # --- YouTube playlists (My Watching) — requires YOUTUBE_API_KEY ---
+    watching_posts: list[dict] = []
+    if youtube_api_key:
+        print("Fetching YouTube playlists (My Watching)…")
+        watching_posts = youtube.ingest(youtube_api_key, CONFIG_DIR, youtube_playlist_ids)
+        print(f"  {len(watching_posts)} post(s) ingested from YouTube.")
     else:
-        display = allowed_posters | {repo_owner.lower()}
-        print(f"  Allowed posters: {display}")
+        print("YOUTUBE_API_KEY not set — skipping YouTube ingestor.")
 
-    # Filter to issues authored by allowed posters
-    allowed_issues = [
-        i for i in raw_issues
-        if is_allowed_poster(i["user"]["login"], repo_owner, allowed_posters, open_mode)
+    # --- Hacker News (My Reading) — requires HN_USERNAME ---
+    reading_posts: list[dict] = []
+    if hn_usernames:
+        names_str = ", ".join(hn_usernames)
+        print(f"Fetching Hacker News (My Reading) for: {names_str}…")
+        reading_posts = hackernews.ingest(hn_usernames)
+        print(f"  {len(reading_posts)} post(s) ingested from Hacker News.")
+    else:
+        print("HN_USERNAME not configured — skipping Hacker News ingestor.")
+
+    # Build active sections (skip sections that produced no posts)
+    section_posts = {
+        "writing":  writing_posts,
+        "watching": watching_posts,
+        "reading":  reading_posts,
+    }
+    active_sections = [
+        {**defn, "posts": section_posts[defn["key"]]}
+        for defn in _SECTION_DEFS
+        if section_posts[defn["key"]]
     ]
-    skipped = len(raw_issues) - len(allowed_issues)
-    if skipped:
-        print(f"  Skipped {skipped} issue(s) from non-allowed poster(s).")
 
-    print("Fetching fork owners for cross-link support…")
-    fork_owners = fetch_fork_owners(repo, headers)
-    print(f"  Forks found: {len(fork_owners)}")
+    # All posts merged and sorted newest-first (for combined feed / post pages)
+    all_posts = sorted(
+        writing_posts + watching_posts + reading_posts,
+        key=lambda p: p["created_at"],
+        reverse=True,
+    )
 
-    posts = []
-    for issue in allowed_issues:
-        num = issue["number"]
-        print(f"  Processing issue #{num}: {issue['title']}")
-        raw_comments = fetch_comments(repo, num, headers)
-        post = process_issue(issue, raw_comments, blocked, fork_owners, repo_name)
-        posts.append(post)
-
-    # Sort newest-first by creation date
-    posts.sort(key=lambda p: p["created_at"], reverse=True)
-
-    # Set up Jinja2 environment
+    # --- Jinja2 setup ---
     env = Environment(
         loader=FileSystemLoader(str(TEMPLATES_DIR)),
         autoescape=True,
@@ -432,24 +149,22 @@ def generate_site(
 
     # Render index page
     index_tmpl = env.get_template("index.html")
-    index_html = index_tmpl.render(posts=posts)
+    index_html = index_tmpl.render(sections=active_sections, all_posts=all_posts)
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")
     print("Wrote index.html")
 
     # Render individual post pages
     post_tmpl = env.get_template("post.html")
-    for post in posts:
-        post_dir = output_dir / "posts" / str(post["number"])
+    for post in all_posts:
+        post_dir = output_dir / "posts" / post["post_id"]
         post_dir.mkdir(parents=True, exist_ok=True)
         post_html = post_tmpl.render(post=post)
         (post_dir / "index.html").write_text(post_html, encoding="utf-8")
-        print(f"  Wrote posts/{post['number']}/index.html")
+        print(f"  Wrote posts/{post['post_id']}/index.html")
 
-    # Copy static assets
     copy_static(output_dir)
     print("Copied static assets.")
 
-    # Disable Jekyll
     write_nojekyll(output_dir)
     print("Wrote .nojekyll")
 
@@ -459,6 +174,7 @@ def generate_site(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
@@ -470,7 +186,20 @@ def main() -> None:
     token = os.environ.get("GITHUB_TOKEN") or None
     output_dir = Path(os.environ.get("OUTPUT_DIR", "_site")).resolve()
 
-    generate_site(repo=repo, token=token, output_dir=output_dir)
+    youtube_api_key = os.environ.get("YOUTUBE_API_KEY") or None
+    youtube_playlist_ids = os.environ.get("YOUTUBE_PLAYLIST_IDS") or None
+
+    # HN usernames: from HN_USERNAME env var and/or local config file (gitignored)
+    hn_usernames = hackernews.load_usernames(CONFIG_DIR, os.environ.get("HN_USERNAME") or None)
+
+    generate_site(
+        repo=repo,
+        token=token,
+        output_dir=output_dir,
+        youtube_api_key=youtube_api_key,
+        youtube_playlist_ids=youtube_playlist_ids,
+        hn_usernames=hn_usernames or None,
+    )
 
 
 if __name__ == "__main__":

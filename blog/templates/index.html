@@ -3,34 +3,47 @@
 {% block title %}{{ repo_name }} &mdash; Blog{% endblock %}
 
 {% block content %}
-<section class="post-list">
-  <h1 class="page-heading">Latest Posts</h1>
+{% if sections %}
+  {% for section in sections %}
+  <section class="blog-section" id="section-{{ section.key }}">
+    <h2 class="section-heading">
+      <span class="section-icon" aria-hidden="true">{{ section.icon }}</span>
+      {{ section.title }}
+    </h2>
 
-  {% if posts %}
-    {% for post in posts %}
-    <article class="post-card">
-      <h2 class="post-card__title">
-        <a href="/posts/{{ post.number }}/">{{ post.title }}</a>
-      </h2>
+    {% for post in section.posts %}
+    <article class="post-card post-card--{{ post.source }}">
+      <h3 class="post-card__title">
+        <a href="{{ post.post_url }}">{{ post.title }}</a>
+      </h3>
       <div class="post-card__meta">
+        {% if post.avatar_url %}
         <img class="avatar avatar--small" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="24" height="24" />
+        {% endif %}
         <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
         &mdash;
         <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        {% if post.source == 'github' and post.comment_count %}
         &mdash;
-        {% if post.comment_count == 1 %}
-          1 comment
-        {% else %}
-          {{ post.comment_count }} comments
+        {% if post.comment_count == 1 %}1 comment{% else %}{{ post.comment_count }} comments{% endif %}
         {% endif %}
+        &mdash;
+        <span class="source-badge source-badge--{{ post.source }}">{{ post.source }}</span>
       </div>
       {% if post.excerpt %}
       <p class="post-card__excerpt">{{ post.excerpt }}</p>
       {% endif %}
-      <a class="post-card__read-more" href="/posts/{{ post.number }}/">Read more &rarr;</a>
+      <a class="post-card__read-more" href="{{ post.post_url }}">Read more &rarr;</a>
     </article>
     {% endfor %}
-  {% else %}
+  </section>
+  {% endfor %}
+{% else %}
+  <section class="blog-section">
+    <h2 class="section-heading">
+      <span class="section-icon" aria-hidden="true">✍️</span>
+      My Writing
+    </h2>
     <div class="empty-state">
       <p>No blog posts yet.</p>
       <p>
@@ -38,6 +51,6 @@
         on GitHub and add the <code>blog-post</code> label.
       </p>
     </div>
-  {% endif %}
-</section>
+  </section>
+{% endif %}
 {% endblock %}
