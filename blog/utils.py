@@ -110,13 +110,109 @@ def sanitize_html(raw_html: str) -> str:
     return cleaned
 
 
+# ---------------------------------------------------------------------------
+# YouTube URL auto-embedding
+# ---------------------------------------------------------------------------
+
+# YouTube video ID: exactly 11 characters of [A-Za-z0-9_-]
+_YT_VIDEO_ID_RE = re.compile(r'[A-Za-z0-9_-]{11}')
+
+# Matches the URL forms YouTube uses in the wild (with optional www / m prefix)
+_YT_URL_PATTERNS = [
+    # https://www.youtube.com/watch?v=VIDEO_ID  (plus optional extra params)
+    re.compile(r'https?://(?:www\.|m\.)?youtube\.com/watch\?(?:[^"<>\s]*&)?v=([A-Za-z0-9_-]{11})(?:[^"<>\s]*)?', re.IGNORECASE),
+    # https://youtu.be/VIDEO_ID
+    re.compile(r'https?://youtu\.be/([A-Za-z0-9_-]{11})(?:[?#][^"<>\s]*)?', re.IGNORECASE),
+    # https://www.youtube.com/embed/VIDEO_ID  (already an embed URL pasted in)
+    re.compile(r'https?://(?:www\.)?youtube(?:-nocookie)?\.com/embed/([A-Za-z0-9_-]{11})(?:[?#][^"<>\s]*)?', re.IGNORECASE),
+    # https://www.youtube.com/shorts/VIDEO_ID
+    re.compile(r'https?://(?:www\.)?youtube\.com/shorts/([A-Za-z0-9_-]{11})(?:[?#][^"<>\s]*)?', re.IGNORECASE),
+]
+
+
+def _extract_youtube_video_id(url: str) -> str | None:
+    """Return the video ID from a YouTube URL, or None if not recognised."""
+    for pattern in _YT_URL_PATTERNS:
+        m = pattern.search(url)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _make_youtube_embed(video_id: str, title: str = "YouTube video") -> str:
+    """Return an accessible, privacy-enhanced YouTube embed HTML string."""
+    # youtube-nocookie.com doesn't set cookies until the user presses play.
+    escaped_id    = urllib.parse.quote(video_id, safe="")
+    escaped_title = _html.escape(title, quote=True)
+    src = f"https://www.youtube-nocookie.com/embed/{escaped_id}"
+    return (
+        f'<div class="video-embed">'
+        f'<iframe src="{src}" title="{escaped_title}" frameborder="0" '
+        f'allow="accelerometer; autoplay; clipboard-write; encrypted-media; '
+        f'gyroscope; picture-in-picture" allowfullscreen></iframe>'
+        f'</div>'
+    )
+
+
+def embed_youtube_urls(html: str) -> str:
+    """
+    Replace standalone YouTube URL paragraphs with responsive embedded iframes.
+
+    A "standalone" paragraph is one whose only content is a YouTube URL —
+    either as plain text or wrapped in an ``<a>`` tag (the typical output of
+    Markdown processors for bare URLs).  Inline links that are part of a
+    longer sentence are intentionally left as links.
+
+    The embed uses ``youtube-nocookie.com`` for privacy (no cookies until
+    the user presses play).  The iframe is injected by this function — it is
+    *not* user-supplied HTML — so it is safe despite iframes being stripped
+    from user content by the sanitizer.
+    """
+    # Pattern: <p> whose trimmed content is either:
+    #   • a bare YouTube URL, OR
+    #   • <a ...>YouTube URL</a>  (Markdown linkified the bare URL)
+    # We capture whatever is between <p> and </p> and inspect it.
+    _para_re = re.compile(r'<p>(.*?)</p>', re.DOTALL | re.IGNORECASE)
+
+    def _maybe_embed(m: re.Match) -> str:
+        inner = m.group(1).strip()
+
+        # Case 1: bare URL with no markup at all — the entire paragraph is the URL
+        if not inner.startswith("<"):
+            if re.fullmatch(r'https?://\S+', inner):
+                video_id = _extract_youtube_video_id(inner)
+                if video_id:
+                    return _make_youtube_embed(video_id)
+            return m.group(0)
+
+        # Case 2: <a href="URL">…</a> — pick the href
+        href_m = re.match(
+            r'<a\s[^>]*href=["\']([^"\']+)["\'][^>]*>.*?</a>\s*$',
+            inner,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if href_m:
+            video_id = _extract_youtube_video_id(href_m.group(1))
+            if video_id:
+                # Extract the link text to use as the iframe title
+                link_text_m = re.search(r'>([^<]*)<', inner)
+                title = link_text_m.group(1).strip() if link_text_m else "YouTube video"
+                return _make_youtube_embed(video_id, title or "YouTube video")
+
+        return m.group(0)
+
+    return _para_re.sub(_maybe_embed, html)
+
+
+
 def markdown_to_safe_html(text: str) -> str:
-    """Convert Markdown text to sanitized HTML."""
+    """Convert Markdown text to sanitized HTML, with YouTube URL auto-embedding."""
     if not text:
         return ""
     md = markdown.Markdown(extensions=MD_EXTENSIONS)
     raw_html = md.convert(text)
-    return sanitize_html(raw_html)
+    sanitized = sanitize_html(raw_html)
+    return embed_youtube_urls(sanitized)
 
 
 def plain_text_to_html(text: str) -> str:

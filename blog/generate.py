@@ -12,8 +12,8 @@ Environment variables:
     GITHUB_REPOSITORY    Required. Repository in "owner/repo" format.
     OUTPUT_DIR           Optional. Output directory. Default: _site
 
-    YOUTUBE_API_KEY      Optional. YouTube Data API v3 key.
-                         Required to enable the "My Watching" section.
+    YOUTUBE_API_KEY      Removed — no longer needed! The YouTube ingestor now uses
+                         YouTube's public Atom/RSS feeds (no key required).
     YOUTUBE_PLAYLIST_IDS Optional. Comma-separated YouTube playlist IDs.
                          Set this as a GitHub Actions repository variable
                          (Settings → Variables) so it is NOT stored in source.
@@ -86,7 +86,6 @@ def generate_site(
     repo: str,
     token: str | None,
     output_dir: Path,
-    youtube_api_key: str | None = None,
     youtube_playlist_ids: str | None = None,
     hn_usernames: list[str] | None = None,
 ) -> None:
@@ -98,14 +97,15 @@ def generate_site(
     writing_posts = github_issues.ingest(repo, token, CONFIG_DIR)
     print(f"  {len(writing_posts)} post(s) ingested from GitHub Issues.")
 
-    # --- YouTube playlists (My Watching) — requires YOUTUBE_API_KEY ---
+    # --- YouTube playlists (My Watching) — uses free public RSS feeds, no API key ---
     watching_posts: list[dict] = []
-    if youtube_api_key:
+    playlist_ids = youtube.load_playlist_ids(CONFIG_DIR, youtube_playlist_ids)
+    if playlist_ids:
         print("Fetching YouTube playlists (My Watching)…")
-        watching_posts = youtube.ingest(youtube_api_key, CONFIG_DIR, youtube_playlist_ids)
+        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids)
         print(f"  {len(watching_posts)} post(s) ingested from YouTube.")
     else:
-        print("YOUTUBE_API_KEY not set — skipping YouTube ingestor.")
+        print("YOUTUBE_PLAYLIST_IDS not configured — skipping YouTube ingestor.")
 
     # --- Hacker News (My Reading) — requires HN_USERNAME ---
     reading_posts: list[dict] = []
@@ -186,7 +186,6 @@ def main() -> None:
     token = os.environ.get("GITHUB_TOKEN") or None
     output_dir = Path(os.environ.get("OUTPUT_DIR", "_site")).resolve()
 
-    youtube_api_key = os.environ.get("YOUTUBE_API_KEY") or None
     youtube_playlist_ids = os.environ.get("YOUTUBE_PLAYLIST_IDS") or None
 
     # HN usernames: from HN_USERNAME env var and/or local config file (gitignored)
@@ -196,7 +195,6 @@ def main() -> None:
         repo=repo,
         token=token,
         output_dir=output_dir,
-        youtube_api_key=youtube_api_key,
         youtube_playlist_ids=youtube_playlist_ids,
         hn_usernames=hn_usernames or None,
     )

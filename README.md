@@ -7,7 +7,7 @@ Content is organised into thematic sections:
 | Section | Source | Label |
 |---------|--------|-------|
 | ✍️ **My Writing** | GitHub Issues labelled `blog-post` | always on |
-| 📺 **My Watching** | YouTube playlist videos | set `YOUTUBE_API_KEY` + `YOUTUBE_PLAYLIST_IDS` |
+| 📺 **My Watching** | YouTube playlist videos | set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
 | 📰 **My Reading** | Hacker News submissions & comments | set `HN_USERNAME` |
 
 ---
@@ -16,7 +16,7 @@ Content is organised into thematic sections:
 
 - **WYSIWYG authoring** — use GitHub's built-in Issue editor (Markdown, images, code blocks, mentions)
 - **Comment threads** — Issue comments become blog comment threads
-- **YouTube embeds** — playlist videos render as responsive embedded players
+- **YouTube embeds** — playlist videos render as responsive embedded players; paste any YouTube URL on its own line in a post to auto-embed it (no API key needed)
 - **HN activity** — your Hacker News stories and comments appear automatically
 - **XSS-safe** — all user content is sanitised with `bleach` before rendering
 - **Mobile-friendly** — clean, responsive CSS with no JavaScript dependencies
@@ -74,14 +74,11 @@ To block commenters, add their usernames to `config/blocked_users.txt`.
 
 ### My Watching — YouTube Playlists
 
-Requires a **YouTube Data API v3** key (free tier is sufficient for personal use).
+**No API key required!** The ingestor uses YouTube's public Atom/RSS feeds, which work for any public playlist without registration or credentials.
 
-**Setup (recommended — keeps your data out of source control):**
+**Setup (recommended — keeps your playlist IDs out of source control):**
 
-1. Create an API key at [console.cloud.google.com](https://console.cloud.google.com/) → APIs & Services → Credentials.
-2. In your GitHub repo, go to **Settings → Secrets and variables → Actions**:
-   - Add a **Secret** named `YOUTUBE_API_KEY` with your API key.
-   - Add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
+In your GitHub repo, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
 
 To find a playlist ID, open the playlist on YouTube and copy the `list=` parameter:
 ```
@@ -90,7 +87,21 @@ https://www.youtube.com/playlist?list=PLILJALPUFXDmE84sBSVlGqcaDFRJ2RZ5Q
                                        this is the playlist ID
 ```
 
+> **Note:** The RSS feed returns up to the 15 most-recently-added videos per playlist. Add multiple playlist IDs (e.g. one per year) if you need more history.
+
 **Local development only:** Copy `config/youtube_playlists.txt.example` to `config/youtube_playlists.txt` and add your IDs. That file is gitignored and will never be committed.
+
+**Auto-embedding YouTube links in blog posts:** You don't even need a playlist configured to get YouTube embeds. Simply paste a YouTube video URL on its own line in any GitHub Issue (blog post):
+
+```
+Check out this great talk:
+
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+It covers...
+```
+
+The video will automatically render as a responsive embedded player — no configuration needed.
 
 ---
 
@@ -131,7 +142,7 @@ The blog rebuilds every 6 hours via a cron schedule, on every Issue or comment e
 
 ```
 GitHub Issues ──────────────────────────────────────────┐
-YouTube Playlists (YOUTUBE_API_KEY + YOUTUBE_PLAYLIST_IDS)├──► blog/generate.py ──► _site/ ──► GitHub Pages
+YouTube Playlists (YOUTUBE_PLAYLIST_IDS, no API key)       ├──► blog/generate.py ──► _site/ ──► GitHub Pages
 Hacker News (HN_USERNAME) ──────────────────────────────┘
 ```
 
@@ -175,4 +186,4 @@ Built with:
 - [requests](https://requests.readthedocs.io/)
 - [peaceiris/actions-gh-pages](https://github.com/peaceiris/actions-gh-pages)
 - [Algolia HN Search API](https://hn.algolia.com/api/v1) (Hacker News)
-- [YouTube Data API v3](https://developers.google.com/youtube/v3) (YouTube)
+- [YouTube Atom/RSS feeds](https://www.youtube.com/feeds/videos.xml) (YouTube, no API key)
