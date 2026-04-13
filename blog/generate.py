@@ -35,8 +35,7 @@ from pathlib import Path
 # script is invoked directly (python blog/generate.py) from the repo root.
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).parent.parent.resolve()
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+sys.path.insert(0, str(_REPO_ROOT))
 
 from jinja2 import Environment, FileSystemLoader  # noqa: E402
 

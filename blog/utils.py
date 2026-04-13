@@ -115,8 +115,6 @@ def sanitize_html(raw_html: str) -> str:
 # ---------------------------------------------------------------------------
 
 # YouTube video ID: exactly 11 characters of [A-Za-z0-9_-]
-_YT_VIDEO_ID_RE = re.compile(r'[A-Za-z0-9_-]{11}')
-
 # Matches the URL forms YouTube uses in the wild (with optional www / m prefix)
 _YT_URL_PATTERNS = [
     # https://www.youtube.com/watch?v=VIDEO_ID  (plus optional extra params)
@@ -202,7 +200,6 @@ def embed_youtube_urls(html: str) -> str:
         return m.group(0)
 
     return _para_re.sub(_maybe_embed, html)
-
 
 
 def markdown_to_safe_html(text: str) -> str:
