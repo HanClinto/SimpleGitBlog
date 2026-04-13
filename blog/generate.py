@@ -230,7 +230,7 @@ def format_date(iso_string: str) -> str:
     """Convert ISO 8601 date string to a human-readable format."""
     try:
         dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-        return dt.strftime("%B %-d, %Y")
+        return dt.strftime("%B %d, %Y").replace(" 0", " ")
     except (ValueError, AttributeError):
         return iso_string
 
