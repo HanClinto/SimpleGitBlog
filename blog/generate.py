@@ -81,6 +81,7 @@ MD_EXTENSIONS = [
 # ---------------------------------------------------------------------------
 
 BLOG_LABEL = "blog-post"
+ALLOWED_POSTERS_FILE = CONFIG_DIR / "allowed_posters.txt"
 
 
 def _github_headers(token: str | None) -> dict:
@@ -141,6 +142,45 @@ def load_blocked_users() -> set:
         if line and not line.startswith("#"):
             blocked.add(line.lower())
     return blocked
+
+
+# ---------------------------------------------------------------------------
+# Allowed posters
+# ---------------------------------------------------------------------------
+
+def load_allowed_posters() -> tuple[set[str], bool]:
+    """
+    Load the set of usernames allowed to author blog posts.
+
+    Returns:
+        (allowed_set, open_mode) where:
+        - open_mode is True when '*' appears in the file (all users allowed).
+        - allowed_set contains explicitly listed usernames (lowercase).
+          The repo owner is always implicitly included at call sites; it is
+          NOT added here so that this function stays pure / testable.
+    """
+    allowed: set[str] = set()
+    open_mode = False
+    if not ALLOWED_POSTERS_FILE.exists():
+        return allowed, open_mode
+    for line in ALLOWED_POSTERS_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line == "*":
+            open_mode = True
+        else:
+            allowed.add(line.lower())
+    return allowed, open_mode
+
+
+def is_allowed_poster(login: str, repo_owner: str, allowed: set, open_mode: bool) -> bool:
+    """Return True if *login* is permitted to author a blog post."""
+    if open_mode:
+        return True
+    if login.lower() == repo_owner.lower():
+        return True
+    return login.lower() in allowed
 
 
 # ---------------------------------------------------------------------------
@@ -337,22 +377,39 @@ def generate_site(
     output_dir: Path,
 ) -> None:
     headers = _github_headers(token)
+    repo_owner = repo.split("/")[0]
     repo_name = repo.split("/")[-1]
     repo_url = f"https://github.com/{repo}"
 
     print(f"Fetching blog posts from {repo}…")
     raw_issues = fetch_blog_posts(repo, headers)
-    print(f"  Found {len(raw_issues)} post(s).")
+    print(f"  Found {len(raw_issues)} labeled issue(s).")
 
     blocked = load_blocked_users()
     print(f"  Blocked users: {blocked or '(none)'}")
+
+    allowed_posters, open_mode = load_allowed_posters()
+    if open_mode:
+        print("  Allowed posters: * (open mode — all users)")
+    else:
+        display = allowed_posters | {repo_owner.lower()}
+        print(f"  Allowed posters: {display}")
+
+    # Filter to issues authored by allowed posters
+    allowed_issues = [
+        i for i in raw_issues
+        if is_allowed_poster(i["user"]["login"], repo_owner, allowed_posters, open_mode)
+    ]
+    skipped = len(raw_issues) - len(allowed_issues)
+    if skipped:
+        print(f"  Skipped {skipped} issue(s) from non-allowed poster(s).")
 
     print("Fetching fork owners for cross-link support…")
     fork_owners = fetch_fork_owners(repo, headers)
     print(f"  Forks found: {len(fork_owners)}")
 
     posts = []
-    for issue in raw_issues:
+    for issue in allowed_issues:
         num = issue["number"]
         print(f"  Processing issue #{num}: {issue['title']}")
         raw_comments = fetch_comments(repo, num, headers)

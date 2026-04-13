@@ -46,6 +46,27 @@ Your post will be live at `https://<your-username>.github.io/<repo-name>/`.
 
 ## ⚙️ Configuration
 
+### Controlling who can post
+
+By default, only the **repository owner** can publish blog posts. Issues opened by other users with the `blog-post` label are silently skipped.
+
+To grant additional users posting rights, add their GitHub usernames to `config/allowed_posters.txt`:
+
+```
+# config/allowed_posters.txt
+alice
+bob
+```
+
+To allow **anyone** to publish (open-contributor mode), add a `*` line:
+
+```
+# config/allowed_posters.txt
+*
+```
+
+The repository owner is always implicitly allowed regardless of the file contents.
+
 ### Blocking users
 
 Add GitHub usernames (one per line) to `config/blocked_users.txt` to prevent their comments from appearing:
@@ -104,6 +125,7 @@ blog/generate.py   ← fetches via GitHub REST API
 | `blog/generate.py` | Main site generator |
 | `blog/templates/` | Jinja2 HTML templates |
 | `blog/static/` | CSS and favicon |
+| `config/allowed_posters.txt` | Usernames allowed to author blog posts |
 | `config/blocked_users.txt` | Blocked commenter usernames |
 | `.github/workflows/build-blog.yml` | CI/CD pipeline |
 | `requirements.txt` | Python dependencies |
