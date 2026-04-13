@@ -1,5 +1,7 @@
 name: Build and Deploy Blog
 on:
+  push:
+    branches: [main]  # rebuild whenever a PR merges (or any push to main)
   issues:
     types: [opened, edited, deleted, labeled, unlabeled, reopened, closed]
   issue_comment:
@@ -26,6 +28,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          # YouTube — no API key needed! Uses YouTube's free public Atom/RSS feeds.
+          # Set YOUTUBE_PLAYLIST_IDS as a repository Variable (Settings → Variables)
+          # with one or more comma-separated playlist IDs.
+          # Leave unset to disable the "My Watching" section.
+          YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
+          # Hacker News — set HN_USERNAME as a repository Variable (Settings → Variables).
+          # Leave unset to disable the "My Reading" section.
+          HN_USERNAME: ${{ vars.HN_USERNAME }}
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:

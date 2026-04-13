@@ -1,8 +1,14 @@
 # SimpleGitBlog
 
-A static blog engine powered entirely by **GitHub Issues** — no CMS, no database, no complex infrastructure.
+A static blog engine that pulls content from multiple sources and publishes them to GitHub Pages — no CMS, no database, no complex infrastructure.
 
-Write posts in GitHub's rich Markdown editor. Comments come from Issue comments. Everything is compiled into a clean static HTML site and deployed to GitHub Pages automatically.
+Content is organised into thematic sections:
+
+| Section | Source | Label |
+|---------|--------|-------|
+| ✍️ **My Writing** | GitHub Issues labelled `blog-post` | always on |
+| 📺 **My Watching** | YouTube playlist videos | set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
+| 📰 **My Reading** | Hacker News submissions & comments | set `HN_USERNAME` |
 
 ---
 
@@ -10,6 +16,8 @@ Write posts in GitHub's rich Markdown editor. Comments come from Issue comments.
 
 - **WYSIWYG authoring** — use GitHub's built-in Issue editor (Markdown, images, code blocks, mentions)
 - **Comment threads** — Issue comments become blog comment threads
+- **YouTube embeds** — playlist videos render as responsive embedded players; paste any YouTube URL on its own line in a post to auto-embed it (no API key needed)
+- **HN activity** — your Hacker News stories and comments appear automatically
 - **XSS-safe** — all user content is sanitised with `bleach` before rendering
 - **Mobile-friendly** — clean, responsive CSS with no JavaScript dependencies
 - **Block spammers** — add usernames to `config/blocked_users.txt`
@@ -46,7 +54,7 @@ Your post will be live at `https://<your-username>.github.io/<repo-name>/`.
 
 ## ⚙️ Configuration
 
-### Controlling who can post
+### My Writing — GitHub Issues
 
 By default, only the **repository owner** can publish blog posts. Issues opened by other users with the `blog-post` label are silently skipped.
 
@@ -58,26 +66,58 @@ alice
 bob
 ```
 
-To allow **anyone** to publish (open-contributor mode), add a `*` line:
+To allow **anyone** to publish (open-contributor mode), add a `*` line. The repository owner is always implicitly allowed regardless of the file contents.
+
+To block commenters, add their usernames to `config/blocked_users.txt`.
+
+---
+
+### My Watching — YouTube Playlists
+
+**No API key required!** The ingestor uses YouTube's public Atom/RSS feeds, which work for any public playlist without registration or credentials.
+
+**Setup (recommended — keeps your playlist IDs out of source control):**
+
+In your GitHub repo, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
+
+To find a playlist ID, open the playlist on YouTube and copy the `list=` parameter:
+```
+https://www.youtube.com/playlist?list=PLILJALPUFXDmE84sBSVlGqcaDFRJ2RZ5Q
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                       this is the playlist ID
+```
+
+> **Note:** The RSS feed returns up to the 15 most-recently-added videos per playlist. Add multiple playlist IDs (e.g. one per year) if you need more history.
+
+**Local development only:** Copy `config/youtube_playlists.txt.example` to `config/youtube_playlists.txt` and add your IDs. That file is gitignored and will never be committed.
+
+**Auto-embedding YouTube links in blog posts:** You don't even need a playlist configured to get YouTube embeds. Simply paste a YouTube video URL on its own line in any GitHub Issue (blog post):
 
 ```
-# config/allowed_posters.txt
-*
+Check out this great talk:
+
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+It covers...
 ```
 
-The repository owner is always implicitly allowed regardless of the file contents.
+The video will automatically render as a responsive embedded player — no configuration needed.
 
-### Blocking users
+---
 
-Add GitHub usernames (one per line) to `config/blocked_users.txt` to prevent their comments from appearing:
+### My Reading — Hacker News
 
-```
-# config/blocked_users.txt
-spambot123
-another_bad_actor
-```
+No API key needed — the [Algolia HN Search API](https://hn.algolia.com/api/v1) is public.
 
-Lines starting with `#` are treated as comments and ignored.
+**Setup (recommended — keeps your username out of source control):**
+
+In your GitHub repo, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `HN_USERNAME` with your HN username.
+
+**Local development only:** Copy `config/hackernews.txt.example` to `config/hackernews.txt` and add your username. That file is gitignored and will never be committed.
+
+> **Why not commit the username?** If someone forks your blog, you don't want your personal HN activity appearing on their site by default. Storing configuration in GitHub Actions variables means each fork has its own clean settings.
+
+---
 
 ### Custom domain
 
@@ -101,32 +141,28 @@ The blog rebuilds every 6 hours via a cron schedule, on every Issue or comment e
 ## 🏗️ How It Works
 
 ```
-GitHub Issues (label: blog-post)
-        │
-        ▼
-blog/generate.py   ← fetches via GitHub REST API
-        │
-        ├── Converts Markdown → HTML  (python-markdown)
-        ├── Sanitises HTML            (bleach allowlist)
-        ├── Renders Jinja2 templates
-        └── Writes _site/
-                 │
-                 ▼
-        GitHub Actions (build-blog.yml)
-                 │
-                 ▼
-        GitHub Pages  →  your live blog
+GitHub Issues ──────────────────────────────────────────┐
+YouTube Playlists (YOUTUBE_PLAYLIST_IDS, no API key)       ├──► blog/generate.py ──► _site/ ──► GitHub Pages
+Hacker News (HN_USERNAME) ──────────────────────────────┘
 ```
+
+Each source is handled by an *ingestor* in `blog/ingestors/`. Every ingestor produces posts in a common schema, so the site generator and templates are source-agnostic.
 
 ### Key files
 
 | Path | Purpose |
 |------|---------|
-| `blog/generate.py` | Main site generator |
+| `blog/generate.py` | Orchestrator — calls all ingestors and renders the site |
+| `blog/utils.py` | Shared utilities (HTML sanitisation, Markdown, date formatting) |
+| `blog/ingestors/github_issues.py` | ✍️ My Writing ingestor |
+| `blog/ingestors/youtube.py` | 📺 My Watching ingestor |
+| `blog/ingestors/hackernews.py` | 📰 My Reading ingestor |
 | `blog/templates/` | Jinja2 HTML templates |
 | `blog/static/` | CSS and favicon |
-| `config/allowed_posters.txt` | Usernames allowed to author blog posts |
+| `config/allowed_posters.txt` | GitHub usernames allowed to author blog posts |
 | `config/blocked_users.txt` | Blocked commenter usernames |
+| `config/youtube_playlists.txt.example` | Template for local YouTube config |
+| `config/hackernews.txt.example` | Template for local HN config |
 | `.github/workflows/build-blog.yml` | CI/CD pipeline |
 | `requirements.txt` | Python dependencies |
 
@@ -134,9 +170,10 @@ blog/generate.py   ← fetches via GitHub REST API
 
 ## 🛡️ Security
 
-- All content rendered from Issues and comments passes through `bleach.clean()` with a strict tag/attribute allowlist.
+- All content rendered from Issues, YouTube descriptions, and HN comments passes through `bleach.clean()` with a strict tag/attribute allowlist.
 - `javascript:` and `data:` URI schemes are stripped from all `href` and `src` attributes.
 - All links in user content receive `rel="nofollow noopener noreferrer"`.
+- Personal configuration (HN username, YouTube playlist IDs) is stored in GitHub Actions repository variables — never in committed source files — so forks start with a clean slate.
 
 ---
 
@@ -148,3 +185,5 @@ Built with:
 - [Jinja2](https://jinja.palletsprojects.com/)
 - [requests](https://requests.readthedocs.io/)
 - [peaceiris/actions-gh-pages](https://github.com/peaceiris/actions-gh-pages)
+- [Algolia HN Search API](https://hn.algolia.com/api/v1) (Hacker News)
+- [YouTube Atom/RSS feeds](https://www.youtube.com/feeds/videos.xml) (YouTube, no API key)

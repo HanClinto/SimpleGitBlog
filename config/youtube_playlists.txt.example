@@ -1,0 +1,30 @@
+# YouTube playlist IDs for the "My Watching" section.
+#
+# HOW TO USE
+# ----------
+# No API key is required! The ingestor uses YouTube's public Atom/RSS feeds.
+#
+# The recommended approach is to set YOUTUBE_PLAYLIST_IDS as a GitHub Actions
+# repository Variable (repo Settings → Secrets and variables → Variables).
+# That way your playlist IDs are never committed to source control, so forks
+# of this blog start with a clean slate.
+#
+# For local development only, you may create the file
+#   config/youtube_playlists.txt
+# (without the .example extension) and add one playlist ID per line.
+# That filename is gitignored, so it will never be committed.
+#
+# Each playlist returns up to its 15 most-recently-added videos. Add multiple
+# playlist IDs (one per line) if you need more history.
+#
+# HOW TO FIND A PLAYLIST ID
+# --------------------------
+# Open the playlist on YouTube and copy the "list=" parameter from the URL:
+#   https://www.youtube.com/playlist?list=PLAYLIST_ID_HERE
+#
+# TIP: You can also embed individual YouTube videos in any blog post simply by
+# pasting the video URL on its own line. No playlist configuration needed for that.
+#
+# EXAMPLE ENTRIES (remove the leading # to activate)
+# ----------------------------------------------------
+# PLILJALPUFXDmE84sBSVlGqcaDFRJ2RZ5Q

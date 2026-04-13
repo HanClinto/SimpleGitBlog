@@ -7,36 +7,87 @@
   <header class="post__header">
     <h1 class="post__title">{{ post.title }}</h1>
     <div class="post__meta">
+      {% if post.avatar_url %}
       <img class="avatar" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="36" height="36" />
+      {% endif %}
       <span>
         By <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
         &mdash;
         <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        &mdash;
+        <span class="source-badge source-badge--{{ post.source }}">{{ post.source }}</span>
       </span>
     </div>
+    {% if post.labels %}
     <div class="post__labels">
       {% for label in post.labels %}
         <span class="label">{{ label }}</span>
       {% endfor %}
     </div>
+    {% endif %}
   </header>
 
+  {% if post.source == 'youtube' %}
+  <div class="video-embed">
+    <iframe
+      src="https://www.youtube-nocookie.com/embed/{{ post.metadata.video_id }}"
+      title="{{ post.title }}"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+  {% endif %}
+
+  {% if post.body_html %}
   <div class="post__body prose">
     {{ post.body_html | safe }}
   </div>
+  {% endif %}
 
   <div class="post__actions">
+    {% if post.source == 'github' %}
     <a
-      href="{{ post.github_issue_url }}"
+      href="{{ post.metadata.github_issue_url }}"
       class="btn btn--primary"
       target="_blank"
       rel="noopener noreferrer"
     >
       ✏️ Edit this post on GitHub
     </a>
+    {% elif post.source == 'youtube' %}
+    <a
+      href="{{ post.source_url }}"
+      class="btn btn--primary"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      📺 Watch on YouTube
+    </a>
+    {% elif post.source == 'hackernews' %}
+    <a
+      href="{{ post.metadata.hn_url }}"
+      class="btn btn--primary"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      🗞️ View on Hacker News
+    </a>
+    {% if post.metadata.hn_type == 'story' and post.metadata.article_url and post.metadata.article_url != post.metadata.hn_url %}
+    <a
+      href="{{ post.metadata.article_url }}"
+      class="btn btn--secondary"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      🔗 Read the Article
+    </a>
+    {% endif %}
+    {% endif %}
   </div>
 </article>
 
+{% if post.source == 'github' %}
 <section class="comments">
   <h2 class="comments__heading">
     {% if post.comment_count == 1 %}
@@ -93,7 +144,7 @@
 
   <div class="comments__cta">
     <a
-      href="{{ post.github_issue_url }}"
+      href="{{ post.metadata.github_issue_url }}"
       class="btn btn--secondary"
       target="_blank"
       rel="noopener noreferrer"
@@ -105,6 +156,7 @@
     </p>
   </div>
 </section>
+{% endif %}
 
 <nav class="post-nav">
   <a href="{{ base_path }}">&larr; Back to all posts</a>
