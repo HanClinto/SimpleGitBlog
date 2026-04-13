@@ -78,7 +78,7 @@ def _attr_filter(tag: str, name: str, value: str) -> bool:
 
 
 def _ensure_rel(attrs_str: str) -> str:
-    """Prepend a safe space+attrs block that always includes rel=nofollow."""
+    """Ensure rel="nofollow noopener noreferrer" is present on an <a> tag's attribute string."""
     rel_value = "nofollow noopener noreferrer"
     if re.search(r'\brel=', attrs_str, re.IGNORECASE):
         attrs_str = re.sub(

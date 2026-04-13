@@ -73,7 +73,7 @@
     >
       🗞️ View on Hacker News
     </a>
-    {% if post.metadata.hn_type == 'story' and post.metadata.article_url != post.metadata.hn_url %}
+    {% if post.metadata.hn_type == 'story' and post.metadata.article_url and post.metadata.article_url != post.metadata.hn_url %}
     <a
       href="{{ post.metadata.article_url }}"
       class="btn btn--secondary"

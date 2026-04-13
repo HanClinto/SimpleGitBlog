@@ -92,7 +92,7 @@ def _fetch_playlist_items(api_key: str, playlist_id: str) -> list[dict]:
                 "pageToken": next_token,
             }
         else:
-            url = None  # no more pages
+            break  # no more pages
 
     return items
 

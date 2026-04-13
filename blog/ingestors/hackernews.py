@@ -15,6 +15,7 @@ That file is gitignored so your personal username stays off of version control.
 """
 
 import re
+import urllib.parse
 from pathlib import Path
 
 import requests
@@ -123,7 +124,7 @@ def _process_story(hit: dict) -> dict | None:
     points = hit.get("points") or 0
     num_comments = hit.get("num_comments") or 0
 
-    hn_url = f"{_HN_ITEM_BASE}?id={object_id}"
+    hn_url = f"{_HN_ITEM_BASE}?{urllib.parse.urlencode({'id': object_id})}"
     # For link submissions url points to the external article;
     # for self-posts (Ask HN, etc.) url is None — fall back to the HN thread.
     article_url = hit.get("url") or hn_url
@@ -181,8 +182,11 @@ def _process_comment(hit: dict) -> dict | None:
     story_title = hit.get("story_title") or "a Hacker News discussion"
     story_id = hit.get("story_id")
 
-    hn_comment_url = f"{_HN_ITEM_BASE}?id={object_id}"
-    hn_story_url = f"{_HN_ITEM_BASE}?id={story_id}" if story_id else hn_comment_url
+    hn_comment_url = f"{_HN_ITEM_BASE}?{urllib.parse.urlencode({'id': object_id})}"
+    hn_story_url = (
+        f"{_HN_ITEM_BASE}?{urllib.parse.urlencode({'id': story_id})}"
+        if story_id else hn_comment_url
+    )
 
     body_parts: list[str] = []
     if comment_text:

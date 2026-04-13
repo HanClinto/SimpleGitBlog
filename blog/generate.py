@@ -149,7 +149,7 @@ def generate_site(
 
     # Render index page
     index_tmpl = env.get_template("index.html")
-    index_html = index_tmpl.render(sections=active_sections, all_posts=all_posts)
+    index_html = index_tmpl.render(sections=active_sections)
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")
     print("Wrote index.html")
 

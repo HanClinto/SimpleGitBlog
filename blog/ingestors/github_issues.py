@@ -8,6 +8,7 @@ Section: "writing" (My Writing)
 """
 
 import re
+import urllib.parse
 from pathlib import Path
 
 import requests
@@ -122,7 +123,7 @@ def _is_allowed_poster(login: str, repo_owner: str, allowed: set, open_mode: boo
 # ---------------------------------------------------------------------------
 
 def _build_fork_blog_url(fork_owner: str, repo_name: str) -> str:
-    return f"https://{fork_owner}.github.io/{repo_name}/"
+    return f"https://{fork_owner}.github.io/{urllib.parse.quote(repo_name, safe='')}/"
 
 
 def _fetch_fork_owners(repo: str, headers: dict) -> set:
