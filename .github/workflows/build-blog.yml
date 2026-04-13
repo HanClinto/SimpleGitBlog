@@ -24,6 +24,25 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
+      - name: Show blog configuration
+        env:
+          YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
+          HN_USERNAME: ${{ vars.HN_USERNAME }}
+        run: |
+          echo "=== Blog configuration ==="
+          if [ -n "$YOUTUBE_PLAYLIST_IDS" ]; then
+            echo "✅ YouTube (My Watching):     configured"
+          else
+            echo "⚠️  YouTube (My Watching):     not configured"
+            echo "   → Run the 'Set Up Blog' workflow or add a YOUTUBE_PLAYLIST_IDS repository variable."
+          fi
+          if [ -n "$HN_USERNAME" ]; then
+            echo "✅ Hacker News (My Reading):  configured"
+          else
+            echo "⚠️  Hacker News (My Reading):  not configured"
+            echo "   → Run the 'Set Up Blog' workflow or add an HN_USERNAME repository variable."
+          fi
+          echo "=========================="
       - run: python blog/generate.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

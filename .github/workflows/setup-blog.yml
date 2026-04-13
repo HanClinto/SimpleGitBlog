@@ -1,0 +1,73 @@
+name: Set Up Blog
+
+# Run this workflow once after forking to configure your blog's optional
+# integrations. It stores your settings as GitHub Actions repository
+# Variables (never committed to source) so every fork starts clean.
+#
+# How to run:
+#   Go to Actions → "Set Up Blog" → Run workflow → fill in the inputs → Run.
+#   The workflow sets the variables and then triggers a fresh blog build.
+
+on:
+  workflow_dispatch:
+    inputs:
+      hn_username:
+        description: >
+          Hacker News username — enables the "My Reading" section.
+          Leave blank to skip (or to clear an existing value, enter a single space).
+        required: false
+        default: ''
+      youtube_playlist_ids:
+        description: >
+          YouTube playlist ID(s), comma-separated — enables the "My Watching" section.
+          Find the ID in the playlist URL: youtube.com/playlist?list=PLAYLIST_ID_HERE
+          Leave blank to skip (or to clear an existing value, enter a single space).
+        required: false
+        default: ''
+
+permissions:
+  actions: write   # needed to create / update repository variables
+  contents: write  # needed to trigger the blog build at the end
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Set HN_USERNAME variable
+        if: inputs.hn_username != ''
+        env:
+          HN_VALUE: ${{ inputs.hn_username }}
+        run: |
+          trimmed="${HN_VALUE// /}"    # remove all spaces; a lone space input clears the var
+          if [ -n "$trimmed" ]; then
+            gh variable set HN_USERNAME --body "$trimmed" --repo "$GITHUB_REPOSITORY"
+            echo "✅ HN_USERNAME set to: $trimmed"
+          else
+            gh variable delete HN_USERNAME --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+            echo "🗑️  HN_USERNAME cleared."
+          fi
+
+      - name: Set YOUTUBE_PLAYLIST_IDS variable
+        if: inputs.youtube_playlist_ids != ''
+        env:
+          YT_VALUE: ${{ inputs.youtube_playlist_ids }}
+        run: |
+          trimmed="${YT_VALUE// /}"    # remove all spaces; a lone space input clears the var
+          if [ -n "$trimmed" ]; then
+            gh variable set YOUTUBE_PLAYLIST_IDS --body "$trimmed" --repo "$GITHUB_REPOSITORY"
+            echo "✅ YOUTUBE_PLAYLIST_IDS set."
+          else
+            gh variable delete YOUTUBE_PLAYLIST_IDS --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+            echo "🗑️  YOUTUBE_PLAYLIST_IDS cleared."
+          fi
+
+      - name: Show current configuration
+        run: |
+          echo ""
+          echo "Current repository variables:"
+          gh variable list --repo "$GITHUB_REPOSITORY" || echo "(no variables set)"
+          echo ""
+          echo "Run the 'Build and Deploy Blog' workflow (or push any commit) to rebuild your site."
