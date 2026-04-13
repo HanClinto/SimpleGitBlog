@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} &mdash; {{ repo_name }}{% endblock %}
+
+{% block content %}
+<article class="post">
+  <header class="post__header">
+    <h1 class="post__title">{{ post.title }}</h1>
+    <div class="post__meta">
+      <img class="avatar" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="36" height="36" />
+      <span>
+        By <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
+        &mdash;
+        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+      </span>
+    </div>
+    <div class="post__labels">
+      {% for label in post.labels %}
+        <span class="label">{{ label }}</span>
+      {% endfor %}
+    </div>
+  </header>
+
+  <div class="post__body prose">
+    {{ post.body_html | safe }}
+  </div>
+
+  <div class="post__actions">
+    <a
+      href="{{ post.github_issue_url }}"
+      class="btn btn--primary"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      ✏️ Edit this post on GitHub
+    </a>
+  </div>
+</article>
+
+<section class="comments">
+  <h2 class="comments__heading">
+    {% if post.comment_count == 1 %}
+      1 Comment
+    {% else %}
+      {{ post.comment_count }} Comments
+    {% endif %}
+  </h2>
+
+  {% if post.comments %}
+    <ol class="comment-list">
+      {% for comment in post.comments %}
+      <li class="comment" id="comment-{{ comment.id }}">
+        <div class="comment__header">
+          <img
+            class="avatar"
+            src="{{ comment.avatar_url }}"
+            alt="{{ comment.author }}"
+            width="36"
+            height="36"
+          />
+          <div class="comment__author-info">
+            <a
+              href="{{ comment.author_url }}"
+              class="comment__author"
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+            >{{ comment.author }}</a>
+            {% if comment.fork_blog_url %}
+              &mdash;
+              <a
+                href="{{ comment.fork_blog_url }}"
+                class="comment__fork-link"
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                title="Visit {{ comment.author }}'s fork of this blog"
+              >🔀 Their blog</a>
+            {% endif %}
+            <br />
+            <time class="comment__date" datetime="{{ comment.created_at_iso }}">
+              {{ comment.created_at_fmt }}
+            </time>
+          </div>
+        </div>
+        <div class="comment__body prose">
+          {{ comment.body_html | safe }}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="comments__empty">No comments yet. Be the first!</p>
+  {% endif %}
+
+  <div class="comments__cta">
+    <a
+      href="{{ post.github_issue_url }}"
+      class="btn btn--secondary"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      💬 Add a comment on GitHub
+    </a>
+    <p class="comments__cta-note">
+      You'll need a GitHub account. Your comment will appear here on the next site rebuild.
+    </p>
+  </div>
+</section>
+
+<nav class="post-nav">
+  <a href="/">&larr; Back to all posts</a>
+</nav>
+{% endblock %}

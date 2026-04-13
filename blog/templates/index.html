@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repo_name }} &mdash; Blog{% endblock %}
+
+{% block content %}
+<section class="post-list">
+  <h1 class="page-heading">Latest Posts</h1>
+
+  {% if posts %}
+    {% for post in posts %}
+    <article class="post-card">
+      <h2 class="post-card__title">
+        <a href="/posts/{{ post.number }}/">{{ post.title }}</a>
+      </h2>
+      <div class="post-card__meta">
+        <img class="avatar avatar--small" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="24" height="24" />
+        <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
+        &mdash;
+        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        &mdash;
+        {% if post.comment_count == 1 %}
+          1 comment
+        {% else %}
+          {{ post.comment_count }} comments
+        {% endif %}
+      </div>
+      {% if post.excerpt %}
+      <p class="post-card__excerpt">{{ post.excerpt }}</p>
+      {% endif %}
+      <a class="post-card__read-more" href="/posts/{{ post.number }}/">Read more &rarr;</a>
+    </article>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <p>No blog posts yet.</p>
+      <p>
+        To publish your first post, <a href="{{ repo_url }}/issues/new" target="_blank" rel="noopener noreferrer">open a new issue</a>
+        on GitHub and add the <code>blog-post</code> label.
+      </p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
