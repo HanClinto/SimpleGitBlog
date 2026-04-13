@@ -424,8 +424,12 @@ def generate_site(
         loader=FileSystemLoader(str(TEMPLATES_DIR)),
         autoescape=True,
     )
+    base_path = os.environ.get("BASE_PATH", f"/{repo_name}/")
+    if not base_path.endswith("/"):
+        base_path += "/"
     env.globals["repo_url"] = repo_url
     env.globals["repo_name"] = repo_name
+    env.globals["base_path"] = base_path
     env.globals["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     output_dir.mkdir(parents=True, exist_ok=True)
