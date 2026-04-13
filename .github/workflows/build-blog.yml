@@ -1,5 +1,7 @@
 name: Build and Deploy Blog
 on:
+  push:
+    branches: [main]  # rebuild whenever a PR merges (or any push to main)
   issues:
     types: [opened, edited, deleted, labeled, unlabeled, reopened, closed]
   issue_comment:

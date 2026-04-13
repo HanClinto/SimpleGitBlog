@@ -27,6 +27,7 @@ Environment variables:
 import os
 import shutil
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -88,6 +89,8 @@ def generate_site(
     youtube_playlist_ids: str | None = None,
     hn_usernames: list[str] | None = None,
 ) -> None:
+    _start = time.monotonic()
+
     repo_name = repo.split("/")[-1]
     repo_url = f"https://github.com/{repo}"
 
@@ -143,6 +146,7 @@ def generate_site(
     env.globals["repo_url"] = repo_url
     env.globals["repo_name"] = repo_name
     env.globals["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    env.globals["generated_in"] = f"{time.monotonic() - _start:.1f}s"
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
