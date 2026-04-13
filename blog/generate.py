@@ -156,8 +156,14 @@ def _is_safe_url(url: str) -> bool:
 
 def _attr_filter(tag: str, name: str, value: str) -> bool:
     """
-    bleach attribute callable — returns True to keep an attribute.
-    Rejects attributes not in ALLOWED_ATTRS and strips dangerous URL schemes.
+    bleach attribute callable — returns True to keep an attribute, False to strip it.
+
+    Attributes are kept only when:
+    - They appear in ALLOWED_ATTRS for the given tag, AND
+    - Any URL-bearing attribute (href on <a>, src on <img>) uses an allowed scheme.
+
+    Returning False causes bleach to remove the attribute entirely from the output,
+    which is the correct behavior for security — it never substitutes or escapes the value.
     """
     allowed_for_tag = ALLOWED_ATTRS.get(tag, [])
     if name not in allowed_for_tag:
