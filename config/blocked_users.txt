@@ -1,0 +1,3 @@
+# Add GitHub usernames here to block their comments from appearing on the blog
+# One username per line
+# Lines starting with # are comments
