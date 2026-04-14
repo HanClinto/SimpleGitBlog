@@ -43,7 +43,7 @@ sys.path.insert(0, str(_REPO_ROOT))
 from jinja2 import Environment, FileSystemLoader  # noqa: E402
 import urllib.parse  # noqa: E402
 
-from blog.ingestors import github_issues, hackernews, youtube  # noqa: E402
+from blog.ingestors import github_issues, github_profile, hackernews, youtube  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -102,41 +102,84 @@ def generate_site(
     token: str | None,
     output_dir: Path,
     youtube_playlist_ids: str | None = None,
+    youtube_channel_ids: str | None = None,
     hn_usernames: list[str] | None = None,
 ) -> None:
     _start = time.monotonic()
 
+    repo_owner = repo.split("/")[0]
     repo_name = repo.split("/")[-1]
     repo_url = f"https://github.com/{repo}"
+
+    # Build GitHub API request headers
+    gh_headers: dict[str, str] = {"Accept": "application/vnd.github+json"}
+    if token:
+        gh_headers["Authorization"] = f"Bearer {token}"
 
     # Load config files early so we can pass them to the config page
     hidden_labels = github_issues._load_hidden_labels(CONFIG_DIR)
     blocked_users = github_issues._load_blocked_users(CONFIG_DIR)
+
+    # --- GitHub owner profile & social links ---
+    print(f"Fetching GitHub profile for: {repo_owner}…")
+    owner_profile = github_profile.fetch_owner_profile(repo_owner, gh_headers)
+    if owner_profile:
+        print(f"  Profile: {owner_profile.name or owner_profile.login}")
+        print(f"  Social links: {len(owner_profile.social_links)} found.")
+    else:
+        print("  Could not fetch GitHub profile — social link auto-discovery disabled.")
 
     # --- GitHub Issues (My Writing) — always runs ---
     print("Fetching GitHub Issues (My Writing)…")
     writing_posts = github_issues.ingest(repo, token, CONFIG_DIR)
     print(f"  {len(writing_posts)} post(s) ingested from GitHub Issues.")
 
-    # --- YouTube playlists (My Watching) — uses free public RSS feeds, no API key ---
+    # --- YouTube playlists & channels (My Watching) — uses free public RSS feeds, no API key ---
     watching_posts: list[dict] = []
     playlist_ids = youtube.load_playlist_ids(CONFIG_DIR, youtube_playlist_ids)
-    if playlist_ids:
-        print("Fetching YouTube playlists (My Watching)…")
-        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids)
+    channel_ids = youtube.load_channel_ids(CONFIG_DIR, youtube_channel_ids)
+
+    # Auto-discover YouTube channel from GitHub social links when not explicitly configured
+    profile_youtube_handles: list[str] = []
+    if owner_profile:
+        profile_youtube_handles = github_profile.extract_youtube_handles(owner_profile.social_links)
+    auto_discovered_channels = (
+        profile_youtube_handles
+        if (not channel_ids and profile_youtube_handles)
+        else []
+    )
+    effective_channel_ids_str = youtube_channel_ids
+    if auto_discovered_channels and not channel_ids:
+        print(f"  Auto-discovered YouTube channel(s) from GitHub profile: {auto_discovered_channels}")
+        effective_channel_ids_str = ",".join(auto_discovered_channels)
+        channel_ids = youtube.load_channel_ids(CONFIG_DIR, effective_channel_ids_str)
+
+    if playlist_ids or channel_ids:
+        print("Fetching YouTube content (My Watching)…")
+        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids, effective_channel_ids_str)
         print(f"  {len(watching_posts)} post(s) ingested from YouTube.")
     else:
-        print("YOUTUBE_PLAYLIST_IDS not configured — skipping YouTube ingestor.")
+        print("YOUTUBE_PLAYLIST_IDS / YOUTUBE_CHANNEL_IDS not configured and none found in GitHub profile — skipping YouTube ingestor.")
 
-    # --- Hacker News (My Reading) — requires HN_USERNAME ---
+    # --- Hacker News (My Reading) — HN_USERNAME env var, or auto-discovered from GitHub profile ---
     reading_posts: list[dict] = []
-    if hn_usernames:
-        names_str = ", ".join(hn_usernames)
+    auto_discovered_hn_username: str | None = None
+    effective_hn_usernames = hn_usernames  # start with whatever was explicitly configured
+
+    if not effective_hn_usernames and owner_profile:
+        discovered = github_profile.extract_hn_username(owner_profile.social_links)
+        if discovered:
+            auto_discovered_hn_username = discovered
+            effective_hn_usernames = [discovered]
+            print(f"  Auto-discovered HN username from GitHub profile: {discovered}")
+
+    if effective_hn_usernames:
+        names_str = ", ".join(effective_hn_usernames)
         print(f"Fetching Hacker News (My Reading) for: {names_str}…")
-        reading_posts = hackernews.ingest(hn_usernames)
+        reading_posts = hackernews.ingest(effective_hn_usernames)
         print(f"  {len(reading_posts)} post(s) ingested from Hacker News.")
     else:
-        print("HN_USERNAME not configured — skipping Hacker News ingestor.")
+        print("HN_USERNAME not configured and none found in GitHub profile — skipping Hacker News ingestor.")
 
     # Build active sections (skip sections that produced no posts)
     section_posts = {
@@ -156,6 +199,44 @@ def generate_site(
         key=lambda p: p["created_at"],
         reverse=True,
     )
+
+    # --- Sidebar data ---
+    # Split HN posts into stories vs. comments for separate sidebar panels
+    _SIDEBAR_LIMIT = 5
+    hn_stories = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
+    hn_comments = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "comment"]
+    # Build per-username HN profile links (use first effective username if multiple)
+    _hn_user = (effective_hn_usernames or [None])[0]
+    hn_submitted_url = (
+        f"https://news.ycombinator.com/submitted?id={_hn_user}" if _hn_user else None
+    )
+    hn_threads_url = (
+        f"https://news.ycombinator.com/threads?id={_hn_user}" if _hn_user else None
+    )
+    hn_profile_url = (
+        f"https://news.ycombinator.com/user?id={_hn_user}" if _hn_user else None
+    )
+
+    # Collect unique YouTube "view more" URLs (one per playlist/channel)
+    seen_view_more: set[str] = set()
+    youtube_view_more_urls: list[dict] = []
+    for p in watching_posts:
+        vmu = p.get("metadata", {}).get("view_more_url")
+        stype = p.get("metadata", {}).get("source_type", "playlist")
+        if vmu and vmu not in seen_view_more:
+            seen_view_more.add(vmu)
+            youtube_view_more_urls.append({"url": vmu, "source_type": stype})
+
+    sidebar = {
+        "hn_stories":       hn_stories[:_SIDEBAR_LIMIT],
+        "hn_comments":      hn_comments[:_SIDEBAR_LIMIT],
+        "hn_submitted_url": hn_submitted_url,
+        "hn_threads_url":   hn_threads_url,
+        "hn_profile_url":   hn_profile_url,
+        "hn_username":      _hn_user,
+        "watching":         watching_posts[:_SIDEBAR_LIMIT],
+        "youtube_view_more_urls": youtube_view_more_urls,
+    }
 
     # --- Jinja2 setup ---
     env = Environment(
@@ -204,7 +285,7 @@ def generate_site(
 
     # Render index page
     index_tmpl = env.get_template("index.html")
-    index_html = index_tmpl.render(sections=active_sections)
+    index_html = index_tmpl.render(sections=active_sections, sidebar=sidebar)
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")
     print("Wrote index.html")
 
@@ -233,8 +314,12 @@ def generate_site(
 
     # Render config page
     config_ctx = {
-        "hn_usernames": hn_usernames or [],
+        "hn_usernames": effective_hn_usernames or [],
+        "auto_discovered_hn_username": auto_discovered_hn_username,
         "playlist_ids": playlist_ids,
+        "channel_ids": channel_ids,
+        "auto_discovered_channels": auto_discovered_channels,
+        "owner_profile": owner_profile,
         "hidden_labels": sorted(hidden_labels),
         "blocked_user_count": len(blocked_users),
         "writing_post_count": len(writing_posts),
@@ -270,6 +355,7 @@ def main() -> None:
     output_dir = Path(os.environ.get("OUTPUT_DIR", "_site")).resolve()
 
     youtube_playlist_ids = os.environ.get("YOUTUBE_PLAYLIST_IDS") or None
+    youtube_channel_ids = os.environ.get("YOUTUBE_CHANNEL_IDS") or None
 
     # HN usernames: from HN_USERNAME env var and/or local config file (gitignored)
     hn_usernames = hackernews.load_usernames(CONFIG_DIR, os.environ.get("HN_USERNAME") or None)
@@ -279,6 +365,7 @@ def main() -> None:
         token=token,
         output_dir=output_dir,
         youtube_playlist_ids=youtube_playlist_ids,
+        youtube_channel_ids=youtube_channel_ids,
         hn_usernames=hn_usernames or None,
     )
 
