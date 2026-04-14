@@ -235,6 +235,22 @@ def generate_site(
         reverse=True,
     )
 
+    # Inject synthetic source-type labels so posts can be browsed by type via
+    # the same /labels/{slug}/ pages used by GitHub issue labels.
+    for post in all_posts:
+        src = post.get("source")
+        if src == "github":
+            synthetic = "Blog Post"
+        elif src == "youtube":
+            synthetic = "Video"
+        elif src == "hackernews":
+            hn_type = post.get("metadata", {}).get("hn_type", "story")
+            synthetic = "Link Submission" if hn_type == "story" else "HN Comment"
+        else:
+            continue
+        if synthetic not in post["labels"]:
+            post["labels"].append(synthetic)
+
     # --- Sidebar data ---
     _SIDEBAR_LIMIT = 5
     hn_stories = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
@@ -343,7 +359,7 @@ def generate_site(
 
     # Pre-compute labels so templates can link to /labels/{slug}/ pages
     label_map: dict[str, list[dict]] = {}
-    for post in writing_posts:
+    for post in all_posts:
         for lbl in post.get("labels", []):
             label_map.setdefault(lbl, []).append(post)
     all_labels = sorted(

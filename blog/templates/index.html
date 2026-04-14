@@ -14,7 +14,7 @@
 {% if post.source == 'github' %}
 <article class="post-card post-card--github">
   <div class="post-card__meta">
-    <span class="source-badge source-badge--github">✍️ Blog Post</span>
+    <a href="{{ base_path }}labels/{{ label_slug('Blog Post') }}/" class="source-badge source-badge--github">✍️ Blog Post</a>
     <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
     {% if post.comment_count %}
     &mdash; {{ post.comment_count }} comment{% if post.comment_count != 1 %}s{% endif %}
@@ -39,7 +39,7 @@
 {% elif post.source == 'youtube' %}
 <article class="post-card post-card--youtube">
   <div class="post-card__meta">
-    <span class="source-badge source-badge--youtube">🎬 Video</span>
+    <a href="{{ base_path }}labels/{{ label_slug('Video') }}/" class="source-badge source-badge--youtube">🎬 Video</a>
     <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
   </div>
   <h3 class="post-card__title">
@@ -59,7 +59,7 @@
 {% elif post.source == 'hackernews' %}
 <article class="post-card post-card--hackernews">
   <div class="post-card__meta">
-    <span class="source-badge source-badge--hackernews">📰 Link Submission</span>
+    <a href="{{ base_path }}labels/{{ label_slug('Link Submission') if post.metadata.hn_type == 'story' else label_slug('HN Comment') }}/" class="source-badge source-badge--hackernews">{{ '📰 Link Submission' if post.metadata.hn_type == 'story' else '💬 HN Comment' }}</a>
     <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
     &middot; {{ post.metadata.points }} pt{% if post.metadata.points != 1 %}s{% endif %}
     &middot; <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.num_comments }} comment{% if post.metadata.num_comments != 1 %}s{% endif %} on HN</a>
