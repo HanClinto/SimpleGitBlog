@@ -261,6 +261,11 @@ def render(
                     seen[src_id] = grp
                 if len(seen[src_id]["posts"]) < _SIDEBAR_LIMIT:
                     seen[src_id]["posts"].append(p)
+            # When multiple playlists are present, number the sidebar headings
+            # so readers can distinguish them ("My Watching 1", "My Watching 2", …)
+            if len(grp_list) > 1:
+                for i, grp in enumerate(grp_list, 1):
+                    grp["title"] = f"{meta['title']} {i}"
             sidebar_panels.extend(grp_list)
         else:
             view_all = {
