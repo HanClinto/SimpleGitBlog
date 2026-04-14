@@ -1,4 +1,4 @@
-A simple blog, powered by Github.
+A [simple blog](https://hanclinto.github.io/SimpleGitBlog/), powered by Github.
 
 Want a blog? [Fork this repo](https://github.com/HanClinto/SimpleGitBlog/fork), no configuration needed. Write posts as [Issues](https://github.com/HanClinto/SimpleGitBlog/issues). The project picks them up automatically. [Instant blog for you](https://hanclinto.github.io/SimpleGitBlog/). Minimal configuration. Transparent. Everything lives in Github.
 
