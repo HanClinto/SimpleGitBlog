@@ -62,12 +62,19 @@ class OwnerProfile(NamedTuple):
 # Fetching
 # ---------------------------------------------------------------------------
 
-def fetch_owner_profile(owner: str, headers: dict) -> OwnerProfile | None:
+def fetch_owner_profile(
+    owner: str,
+    headers: dict,
+    warnings: list[str] | None = None,
+) -> OwnerProfile | None:
     """
     Fetch the public GitHub profile and social accounts for ``owner``.
 
     Returns ``None`` if either request fails (network error, rate limit, etc.).
     Failures are non-fatal — the blog simply skips auto-discovery.
+
+    Any warning messages are printed and, when ``warnings`` is provided,
+    appended to that list for downstream reporting.
     """
     # --- Basic profile ---
     try:
@@ -79,7 +86,10 @@ def fetch_owner_profile(owner: str, headers: dict) -> OwnerProfile | None:
         resp.raise_for_status()
         profile_data = resp.json()
     except requests.RequestException as exc:
-        print(f"  Warning: could not fetch GitHub profile for {owner}: {exc}")
+        msg = f"Warning: could not fetch GitHub profile for {owner}: {exc}"
+        print(f"  {msg}")
+        if warnings is not None:
+            warnings.append(msg)
         return None
 
     # --- Social accounts ---
@@ -97,7 +107,10 @@ def fetch_owner_profile(owner: str, headers: dict) -> OwnerProfile | None:
             if provider and url:
                 social_links.append(SocialLink(provider=provider, url=url))
     except requests.RequestException as exc:
-        print(f"  Warning: could not fetch social accounts for {owner}: {exc}")
+        msg = f"Warning: could not fetch social accounts for {owner}: {exc}"
+        print(f"  {msg}")
+        if warnings is not None:
+            warnings.append(msg)
         # Non-fatal — continue with an empty list
 
     return OwnerProfile(

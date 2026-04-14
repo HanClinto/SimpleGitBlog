@@ -130,7 +130,7 @@ def _issue_has_hidden_label(issue: dict, hidden_labels: set[str]) -> bool:
 # Collaborators: who has write access to this repo?
 # ---------------------------------------------------------------------------
 
-def _fetch_write_collaborators(repo: str, headers: dict) -> set[str]:
+def _fetch_write_collaborators(repo: str, headers: dict, warnings: list[str] | None = None) -> set[str]:
     """
     Return the set of logins that have push (write), maintain, or admin
     access to the repository.  Falls back to an empty set on any API error
@@ -147,12 +147,14 @@ def _fetch_write_collaborators(repo: str, headers: dict) -> set[str]:
         return allowed
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "unknown"
-        print(
-            f"  Warning: could not fetch collaborators (HTTP {status})."
+        msg = (
+            f"Warning: could not fetch collaborators (HTTP {status})."
             " Falling back to owner-only allow-list."
-            " Ensure the workflow token has repository read access.",
-            file=sys.stderr,
+            " Ensure the workflow token has repository read access."
         )
+        print(f"  {msg}", file=sys.stderr)
+        if warnings is not None:
+            warnings.append(msg)
         return set()
 
 
@@ -315,8 +317,9 @@ def _process_issue(
 # Public ingest entry point
 # ---------------------------------------------------------------------------
 
-def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
-    """Fetch GitHub Issues and return a list of posts in the common schema."""
+def ingest(repo: str, token: str | None, config_dir: Path) -> tuple[list[dict], list[str]]:
+    """Fetch GitHub Issues and return ``(posts, warnings)``."""
+    warnings: list[str] = []
     headers = _github_headers(token)
     repo_owner = repo.split("/")[0]
     repo_name = repo.split("/")[-1]
@@ -331,7 +334,7 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
     print(f"  Hidden labels: {hidden_labels or '(none)'}")
 
     # Primary allowed list: repo owner + collaborators with write+ access
-    collaborators = _fetch_write_collaborators(repo, headers)
+    collaborators = _fetch_write_collaborators(repo, headers, warnings=warnings)
     display = collaborators | {repo_owner.lower()}
     print(f"  Allowed posters (owner + write-access collaborators): {display}")
 
@@ -363,4 +366,4 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
         posts.append(post)
 
     posts.sort(key=lambda p: p["created_at"], reverse=True)
-    return posts
+    return posts, warnings

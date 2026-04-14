@@ -72,7 +72,7 @@ def load_channel_ids(env_channel_ids: str | None = None) -> list[str]:
     return sorted(ids)
 
 
-def _resolve_channel_id(handle_or_id: str) -> str | None:
+def _resolve_channel_id(handle_or_id: str, warnings: list[str] | None = None) -> str | None:
     """
     Resolve a channel handle (``@username``) or channel ID (``UCxxxxxx``) to a
     confirmed channel ID.
@@ -96,12 +96,15 @@ def _resolve_channel_id(handle_or_id: str) -> str | None:
     try:
         resp = requests.get(
             channel_url,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; SimpleGitBlog/1.0)"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; SimpleGitBlog/1.0; +https://github.com)"},
             timeout=15,
         )
         resp.raise_for_status()
     except requests.RequestException as exc:
-        print(f"  Warning: could not fetch channel page for {handle_or_id}: {exc}")
+        msg = f"Warning: could not fetch channel page for {handle_or_id}: {exc}"
+        print(f"  {msg}")
+        if warnings is not None:
+            warnings.append(msg)
         return None
 
     # Look for the RSS feed link in the page HTML, which contains the channel_id
@@ -112,7 +115,10 @@ def _resolve_channel_id(handle_or_id: str) -> str | None:
     if m:
         return m.group(1)
 
-    print(f"  Warning: could not extract channel ID from {channel_url}")
+    msg = f"Warning: could not extract channel ID from {channel_url}"
+    print(f"  {msg}")
+    if warnings is not None:
+        warnings.append(msg)
     return None
 
 
@@ -120,7 +126,7 @@ def _resolve_channel_id(handle_or_id: str) -> str | None:
 # RSS / Atom feed helpers
 # ---------------------------------------------------------------------------
 
-def _fetch_feed(url: str, label: str) -> list[dict]:
+def _fetch_feed(url: str, label: str, warnings: list[str] | None = None) -> list[dict]:
     """
     Fetch videos from a YouTube Atom feed (playlist or channel).
 
@@ -131,16 +137,25 @@ def _fetch_feed(url: str, label: str) -> list[dict]:
         response = requests.get(url, timeout=30)
         response.raise_for_status()
     except requests.HTTPError as exc:
-        print(f"  Warning: YouTube RSS error for {label}: {exc}")
+        msg = f"Warning: YouTube RSS error for {label}: {exc}"
+        print(f"  {msg}")
+        if warnings is not None:
+            warnings.append(msg)
         return []
     except requests.RequestException as exc:
-        print(f"  Warning: YouTube RSS request failed for {label}: {exc}")
+        msg = f"Warning: YouTube RSS request failed for {label}: {exc}"
+        print(f"  {msg}")
+        if warnings is not None:
+            warnings.append(msg)
         return []
 
     try:
         root = ET.fromstring(response.content)
     except ET.ParseError as exc:
-        print(f"  Warning: could not parse YouTube RSS for {label}: {exc}")
+        msg = f"Warning: could not parse YouTube RSS for {label}: {exc}"
+        print(f"  {msg}")
+        if warnings is not None:
+            warnings.append(msg)
         return []
 
     entries = []
@@ -181,16 +196,16 @@ def _fetch_feed(url: str, label: str) -> list[dict]:
     return entries
 
 
-def _fetch_playlist_feed(playlist_id: str) -> list[dict]:
+def _fetch_playlist_feed(playlist_id: str, warnings: list[str] | None = None) -> list[dict]:
     """Fetch videos from a YouTube playlist Atom feed."""
     url = f"{_RSS_BASE}?playlist_id={playlist_id}"
-    return _fetch_feed(url, f"playlist {playlist_id}")
+    return _fetch_feed(url, f"playlist {playlist_id}", warnings=warnings)
 
 
-def _fetch_channel_feed(channel_id: str) -> list[dict]:
+def _fetch_channel_feed(channel_id: str, warnings: list[str] | None = None) -> list[dict]:
     """Fetch latest videos from a YouTube channel Atom feed."""
     url = f"{_RSS_BASE}?channel_id={channel_id}"
-    return _fetch_feed(url, f"channel {channel_id}")
+    return _fetch_feed(url, f"channel {channel_id}", warnings=warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -252,27 +267,29 @@ def _process_entry(entry: dict, source_type: str, source_id: str, view_more_url:
 def ingest(
     env_playlist_ids: str | None = None,
     env_channel_ids: str | None = None,
-) -> list[dict]:
+) -> tuple[list[dict], list[str]]:
     """
     Fetch YouTube playlist and channel videos via public RSS feeds and return
-    posts in the common schema.  No API key required.
+    ``(posts, warnings)`` where *warnings* is a list of human-readable problem
+    descriptions (e.g. HTTP 404 on an RSS feed).  No API key required.
 
     Playlist IDs come from the YOUTUBE_PLAYLIST_IDS repository variable.
     Channel IDs/handles come from the YOUTUBE_CHANNEL_IDS repository variable.
     """
+    warnings: list[str] = []
     playlist_ids = load_playlist_ids(env_playlist_ids)
     channel_ids_raw = load_channel_ids(env_channel_ids)
 
     if not playlist_ids and not channel_ids_raw:
         print("  No YouTube playlist IDs or channel IDs configured.")
-        return []
+        return [], warnings
 
     posts: list[dict] = []
     seen_video_ids: set[str] = set()
 
     for playlist_id in playlist_ids:
         print(f"  Fetching playlist RSS: {playlist_id}")
-        entries = _fetch_playlist_feed(playlist_id)
+        entries = _fetch_playlist_feed(playlist_id, warnings=warnings)
         print(f"    {len(entries)} video(s) found.")
         view_more_url = f"https://www.youtube.com/playlist?list={playlist_id}"
         for entry in entries:
@@ -286,12 +303,12 @@ def ingest(
 
     for raw_id in channel_ids_raw:
         print(f"  Resolving YouTube channel: {raw_id}")
-        channel_id = _resolve_channel_id(raw_id)
+        channel_id = _resolve_channel_id(raw_id, warnings=warnings)
         if not channel_id:
             print(f"    Skipping — could not resolve channel ID for: {raw_id}")
             continue
         print(f"  Fetching channel RSS: {channel_id}")
-        entries = _fetch_channel_feed(channel_id)
+        entries = _fetch_channel_feed(channel_id, warnings=warnings)
         print(f"    {len(entries)} video(s) found.")
         # Build a human-friendly "view more" URL using the original handle if given
         if raw_id.startswith("@"):
@@ -308,4 +325,4 @@ def ingest(
                 posts.append(post)
 
     posts.sort(key=lambda p: p["created_at"], reverse=True)
-    return posts
+    return posts, warnings

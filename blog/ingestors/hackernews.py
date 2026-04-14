@@ -48,6 +48,7 @@ def _fetch_hn_items(
     username: str,
     item_type: str,
     max_hits: int = _MAX_HITS_PER_TYPE,
+    warnings: list[str] | None = None,
 ) -> list[dict]:
     """
     Fetch stories or comments for a HN username via the Algolia Search API.
@@ -72,7 +73,10 @@ def _fetch_hn_items(
             )
             response.raise_for_status()
         except requests.RequestException as exc:
-            print(f"  Warning: HN API error for {username} ({item_type}): {exc}")
+            msg = f"Warning: HN API error for {username} ({item_type}): {exc}"
+            print(f"  {msg}")
+            if warnings is not None:
+                warnings.append(msg)
             break
 
         data = response.json()
@@ -226,17 +230,18 @@ def _process_comment(hit: dict) -> dict | None:
 # Public ingest entry point
 # ---------------------------------------------------------------------------
 
-def ingest(usernames: list[str]) -> list[dict]:
+def ingest(usernames: list[str]) -> tuple[list[dict], list[str]]:
     """
     Fetch HN story submissions and comments for the given usernames and
-    return a list of posts in the common schema.
+    return ``(posts, warnings)``.
     """
+    warnings: list[str] = []
     posts: list[dict] = []
     seen_ids: set[str] = set()
 
     for username in usernames:
         print(f"  Fetching HN stories for: {username}")
-        story_hits = _fetch_hn_items(username, "story")
+        story_hits = _fetch_hn_items(username, "story", warnings=warnings)
         print(f"    {len(story_hits)} submission(s).")
         for hit in story_hits:
             post = _process_story(hit)
@@ -245,7 +250,7 @@ def ingest(usernames: list[str]) -> list[dict]:
                 posts.append(post)
 
         print(f"  Fetching HN comments for: {username}")
-        comment_hits = _fetch_hn_items(username, "comment")
+        comment_hits = _fetch_hn_items(username, "comment", warnings=warnings)
         print(f"    {len(comment_hits)} comment(s).")
         for hit in comment_hits:
             post = _process_comment(hit)
@@ -254,4 +259,4 @@ def ingest(usernames: list[str]) -> list[dict]:
                 posts.append(post)
 
     posts.sort(key=lambda p: p["created_at"], reverse=True)
-    return posts
+    return posts, warnings

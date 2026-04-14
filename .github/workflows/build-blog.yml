@@ -27,40 +27,57 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
-      - name: Show blog configuration
-        env:
-          YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
-          HN_USERNAME: ${{ vars.HN_USERNAME }}
-        run: |
-          echo "=== Blog configuration ==="
-          if [ -n "$YOUTUBE_PLAYLIST_IDS" ]; then
-            echo "✅ YouTube (My Watching):     configured"
-          else
-            echo "⚠️  YouTube (My Watching):     not configured"
-            echo "   → Run the 'Set Up Blog' workflow or add a YOUTUBE_PLAYLIST_IDS repository variable."
-          fi
-          if [ -n "$HN_USERNAME" ]; then
-            echo "✅ Hacker News (My Reading):  configured"
-          else
-            echo "⚠️  Hacker News (My Reading):  not configured"
-            echo "   → Run the 'Set Up Blog' workflow or add an HN_USERNAME repository variable."
-          fi
-          echo "=========================="
-      - run: python blog/generate.py
+
+      # ------------------------------------------------------------------
+      # Fetch stages — each runs independently.
+      # continue-on-error: true means a transient API failure (e.g. YouTube
+      # RSS 404) turns the step yellow but does NOT stop the workflow.
+      # Any ::warning:: annotations emitted here appear in the Actions UI.
+      # ------------------------------------------------------------------
+
+      - name: "Stage 01 — Fetch GitHub profile"
+        continue-on-error: true
+        run: python blog/01_fetch_profile.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          # YouTube — no API key needed! Uses YouTube's free public Atom/RSS feeds.
-          # Set YOUTUBE_PLAYLIST_IDS as a repository Variable (Settings → Variables)
-          # with one or more comma-separated playlist IDs.
-          # Leave unset to disable the "My Watching" section.
-          YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
-          # Hacker News — set HN_USERNAME as a repository Variable (Settings → Variables).
-          # Leave unset to disable the "My Reading" section.
+          YOUTUBE_CHANNEL_IDS: ${{ vars.YOUTUBE_CHANNEL_IDS }}
           HN_USERNAME: ${{ vars.HN_USERNAME }}
-          # Set by the "Set Up Blog" workflow. Controls the first-time setup warning.
+
+      - name: "Stage 02 — Fetch GitHub Issues (My Writing)"
+        continue-on-error: true
+        run: python blog/02_fetch_issues.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: "Stage 03 — Fetch YouTube (My Watching)"
+        continue-on-error: true
+        run: python blog/03_fetch_youtube.py
+        env:
+          YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
+          YOUTUBE_CHANNEL_IDS: ${{ vars.YOUTUBE_CHANNEL_IDS }}
+
+      - name: "Stage 04 — Fetch Hacker News (My Reading)"
+        continue-on-error: true
+        run: python blog/04_fetch_hn.py
+        env:
+          HN_USERNAME: ${{ vars.HN_USERNAME }}
+
+      # ------------------------------------------------------------------
+      # Render — reads all four cache files and writes _site/.
+      # Warnings from every fetch stage appear in the generated HTML footer.
+      # ------------------------------------------------------------------
+
+      - name: "Stage 05 — Render HTML"
+        run: python blog/05_render.py
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
+          FEED_SOURCES: ${{ vars.FEED_SOURCES }}
           BLOG_CONFIGURED: ${{ vars.BLOG_CONFIGURED }}
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
@@ -68,3 +85,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+

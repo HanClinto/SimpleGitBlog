@@ -33,6 +33,10 @@
   <footer class="site-footer">
     <div class="container">
       <p>
+        {% if pipeline_warnings %}
+        <a href="{{ pipeline_url }}" target="_blank" rel="noopener noreferrer"
+           title="{{ pipeline_warnings | length }} build warning(s) — click to view pipeline log">⚠️</a>
+        {% endif %}
         Powered by <a href="{{ repo_url }}" target="_blank" rel="noopener noreferrer">SimpleGitBlog</a>
         &mdash; <a href="{{ pipeline_url }}" target="_blank" rel="noopener noreferrer">generated {{ generated_at }}</a> in {{ generated_in }}.
       </p>
