@@ -1,5 +1,3 @@
-# SimpleGitBlog
-
 A simple blog, powered by Github.
 
 Want a blog? Fork this repo, no configuration needed. Write posts as [Issues](https://github.com/HanClinto/SimpleGitBlog/issues). The project picks them up. Instant blog for you. Minimal configuration. Transparent. Everything lives in Github.
