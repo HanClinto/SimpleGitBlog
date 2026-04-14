@@ -229,8 +229,10 @@ def plain_text_to_html(text: str) -> str:
 
 def extract_excerpt(text: str, max_chars: int = 280) -> str:
     """Return a plain-text excerpt from a Markdown or plain-text body."""
+    # Strip HTML tags first (GitHub issue bodies may contain raw HTML, e.g. <img>)
+    plain = re.sub(r"<[^>]+>", " ", text)
     # Strip Markdown syntax roughly
-    plain = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    plain = re.sub(r"```.*?```", "", plain, flags=re.DOTALL)
     plain = re.sub(r"`[^`]+`", "", plain)
     plain = re.sub(r"!\[.*?\]\(.*?\)", "", plain)
     plain = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", plain)
