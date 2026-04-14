@@ -10,6 +10,7 @@ Section: "writing" (My Writing)
 """
 
 import re
+import sys
 import unicodedata
 import urllib.parse
 from pathlib import Path
@@ -145,7 +146,14 @@ def _fetch_write_collaborators(repo: str, headers: dict) -> set[str]:
             if perms.get("push") or perms.get("maintain") or perms.get("admin"):
                 allowed.add(c["login"].lower())
         return allowed
-    except requests.HTTPError:
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else "unknown"
+        print(
+            f"  Warning: could not fetch collaborators (HTTP {status})."
+            " Falling back to owner-only allow-list."
+            " Ensure the workflow token has repository read access.",
+            file=sys.stderr,
+        )
         return set()
 
 

@@ -81,7 +81,12 @@ def write_nojekyll(output_dir: Path) -> None:
 
 
 def label_slug(label: str) -> str:
-    """Convert a label name to a URL-safe path segment."""
+    """Convert a label name to a URL-safe path segment.
+
+    ASCII-only labels become clean hyphenated slugs (e.g. "bug fix" → "bug-fix").
+    Labels that are entirely non-ASCII (e.g. emoji-only "🚀") fall back to
+    percent-encoding so the slug is always unique and valid in a URL path.
+    """
     normalized = unicodedata.normalize("NFKD", label).encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
     return slug or urllib.parse.quote(label, safe="")
