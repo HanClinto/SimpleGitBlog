@@ -6,7 +6,7 @@ I don't know if anyone else would ever want to use my AI-coded slop when they ca
 
 Because posts are issues (not code), they aren't copied when you fork the repository. Discussions from users are [comments on those issues](https://github.com/HanClinto/SimpleGitBlog/issues/2#issuecomment-4240186490). So you can fork the repo and you get all of my code with none of my content. 
 
-It feels social and dynamic, yet lives on a static site. People can comment on posts, and the blog will pull in data automatically from your activity on YouTube or Hacker News. But there's no database to configure -- it uses the Github project itself as the data source, and Github Actions to keep everything up to date. Simple, clean.
+It feels social and dynamic, yet lives on a static site. Supports comments and react emojis, and the blog will pull in data automatically from your activity on YouTube or Hacker News. But there's no database to configure -- it uses the Github project itself as the data source, and Github Actions to keep everything up to date. Simple, clean.
 
 Want to let someone else post on your blog? Add them as a collaborator on the repo.
 
