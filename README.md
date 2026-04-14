@@ -4,18 +4,21 @@ A static blog engine that pulls content from multiple sources and publishes them
 
 Content is organised into thematic sections:
 
-| Section | Source | Label |
+| Section | Source | Notes |
 |---------|--------|-------|
-| ✍️ **My Writing** | GitHub Issues labelled `blog-post` | always on |
-| 📺 **My Watching** | YouTube playlist videos | set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
-| 📰 **My Reading** | Hacker News submissions & comments | set `HN_USERNAME` |
+| ✍️ **My Writing** | GitHub Issues | Any issue from a repo collaborator is a post — no label needed |
+| 📺 **My Watching** | YouTube playlist videos | Set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
+| 📰 **My Reading** | Hacker News submissions & comments | Set `HN_USERNAME` |
 
 ---
 
 ## ✨ Features
 
 - **WYSIWYG authoring** — use GitHub's built-in Issue editor (Markdown, images, code blocks, mentions)
-- **Comment threads** — Issue comments become blog comment threads
+- **Zero-label publishing** — every issue you open is automatically a blog post; no special label required
+- **Comment threads** — Issue comments become blog comment threads; click any comment date to jump to it on GitHub
+- **Emoji reactions** — 👍 ❤️ 🎉 and other GitHub reactions are shown on posts and comments
+- **Label organisation** — apply any GitHub label to your issues; the blog generates a browsable label index automatically
 - **YouTube embeds** — playlist videos render as responsive embedded players; paste any YouTube URL on its own line in a post to auto-embed it (no API key needed)
 - **HN activity** — your Hacker News stories and comments appear automatically
 - **XSS-safe** — all user content is sanitised with `bleach` before rendering
@@ -58,8 +61,9 @@ The **Set Up Blog** workflow saves your settings as [GitHub Actions repository V
 1. Open a new Issue in your forked repository.
 2. Give it a descriptive **title** — this becomes your post title.
 3. Write your content in the body using Markdown.
-4. Add the label **`blog-post`** to the issue.
-5. The GitHub Action will trigger automatically and rebuild your site within a minute or two.
+4. The GitHub Action will trigger automatically and rebuild your site within a minute or two.
+
+That's it — no labels required. Any open issue you author is published as a blog post. If you want to organise posts by topic, add any GitHub label to the issue and the blog will generate a browsable label page for it automatically.
 
 Your post will be live at `https://<your-username>.github.io/<repo-name>/`.
 
@@ -69,19 +73,23 @@ Your post will be live at `https://<your-username>.github.io/<repo-name>/`.
 
 ### My Writing — GitHub Issues
 
-By default, only the **repository owner** can publish blog posts. Issues opened by other users with the `blog-post` label are silently skipped.
+Any open Issue authored by the **repository owner or a collaborator with write access** is automatically published as a blog post. No special label is required.
 
-To grant additional users posting rights, add their GitHub usernames to `config/allowed_posters.txt`:
+**Who can post?**
 
-```
-# config/allowed_posters.txt
-alice
-bob
-```
+| User | Publishes automatically? |
+|------|--------------------------|
+| Repository owner | ✅ Yes |
+| Collaborator with Write / Maintain / Admin access | ✅ Yes |
+| External contributor listed in `config/allowed_posters.txt` | ✅ Yes |
+| Anyone (if `*` is in `config/allowed_posters.txt`) | ✅ Yes |
+| Other GitHub users | ❌ No |
 
-To allow **anyone** to publish (open-contributor mode), add a `*` line. The repository owner is always implicitly allowed regardless of the file contents.
+To grant posting rights to a user who doesn't have repository write access, add their username to `config/allowed_posters.txt`.
 
 To block commenters, add their usernames to `config/blocked_users.txt`.
+
+**Organising posts with labels:** Add any GitHub label to an issue and the blog will automatically generate a `/labels/{label}/` page for it. Labels appear as clickable links on the index page and each post.
 
 ---
 
@@ -172,7 +180,7 @@ Each source is handled by an *ingestor* in `blog/ingestors/`. Every ingestor pro
 | `blog/ingestors/hackernews.py` | 📰 My Reading ingestor |
 | `blog/templates/` | Jinja2 HTML templates |
 | `blog/static/` | CSS and favicon |
-| `config/allowed_posters.txt` | GitHub usernames allowed to author blog posts |
+| `config/allowed_posters.txt` | Supplemental poster allow-list (write-access collaborators are allowed automatically) |
 | `config/blocked_users.txt` | Blocked commenter usernames |
 | `config/youtube_playlists.txt.example` | Template for local YouTube config |
 | `config/hackernews.txt.example` | Template for local HN config |

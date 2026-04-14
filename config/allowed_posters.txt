@@ -1,11 +1,14 @@
-# allowed_posters.txt
+# allowed_posters.txt  (supplemental — usually not needed)
 #
-# Controls which GitHub users can author blog posts (i.e. whose Issues with the
-# "blog-post" label will be published on the site).
+# By default, blog posts are published from any open GitHub Issue authored by
+# the repository owner or any collaborator with write (push/maintain/admin)
+# access.  You do not need to list those users here.
+#
+# Use this file only if you want to grant posting rights to a GitHub user who
+# does NOT have repository write access (e.g. a trusted external contributor).
 #
 # Rules:
-#   - The repository owner is ALWAYS allowed regardless of this file.
-#   - Add one GitHub username per line to grant additional users posting rights.
+#   - Add one GitHub username per line.
 #   - Lines starting with # are comments and are ignored.
 #   - Add a single * on its own line to allow ALL users to create blog posts
 #     (open-contributor mode — use with caution).

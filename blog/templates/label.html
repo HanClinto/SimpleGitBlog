@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Posts tagged &ldquo;{{ label_name }}&rdquo; &mdash; {{ repo_name }}{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb">
+  <a href="{{ base_path }}">&larr; All posts</a>
+</nav>
+
+<h1 class="page-heading">
+  <span class="label label--page">{{ label_name }}</span>
+  &mdash; {{ posts | length }} post{{ 's' if posts | length != 1 else '' }}
+</h1>
+
+{% for post in posts %}
+<article class="post-card post-card--{{ post.source }}">
+  <h3 class="post-card__title">
+    <a href="{{ post.post_url }}">{{ post.title }}</a>
+  </h3>
+  <div class="post-card__meta">
+    {% if post.avatar_url %}
+    <img class="avatar avatar--small" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="24" height="24" />
+    {% endif %}
+    <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
+    &mdash;
+    <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+    {% if post.comment_count %}
+    &mdash;
+    {% if post.comment_count == 1 %}1 comment{% else %}{{ post.comment_count }} comments{% endif %}
+    {% endif %}
+  </div>
+  {% if post.labels %}
+  <div class="post-card__labels">
+    {% for lbl in post.labels %}
+    <a href="{{ base_path }}labels/{{ label_slug(lbl) }}/" class="label">{{ lbl }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if post.excerpt %}
+  <p class="post-card__excerpt">{{ post.excerpt }}</p>
+  {% endif %}
+  <a class="post-card__read-more" href="{{ post.post_url }}">Read more &rarr;</a>
+</article>
+{% endfor %}
+
+{% if all_labels | length > 1 %}
+<aside class="labels-sidebar">
+  <h2 class="labels-sidebar__heading">All labels</h2>
+  <ul class="label-list">
+    {% for lbl_info in all_labels %}
+    <li>
+      <a href="{{ base_path }}labels/{{ lbl_info.slug }}/"
+         class="label{% if lbl_info.name == label_name %} label--active{% endif %}">
+        {{ lbl_info.name }}
+      </a>
+      <span class="label-count">{{ lbl_info.count }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</aside>
+{% endif %}
+{% endblock %}
