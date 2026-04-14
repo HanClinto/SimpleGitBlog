@@ -7,8 +7,9 @@ Content is organised into thematic sections:
 | Section | Source | Notes |
 |---------|--------|-------|
 | ✍️ **My Writing** | [GitHub Issues](../../issues) | Any issue from a repo collaborator is a post — no label needed |
-| 📺 **My Watching** | YouTube playlist videos | Set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
-| 📰 **My Reading** | Hacker News submissions & comments | Set `HN_USERNAME` |
+| 🎥 **My Videos** | Your YouTube channel | Link your channel under Social accounts on your GitHub profile |
+| 📺 **My Watching** | YouTube playlist videos | Set `YOUTUBE_PLAYLIST_IDS` repository variable (no API key needed) |
+| 📰 **My Reading** | Hacker News submissions & comments | Link your HN profile on GitHub, or set `HN_USERNAME` |
 
 ---
 
@@ -155,8 +156,9 @@ The blog rebuilds every 6 hours via a cron schedule, on every Issue or comment e
 
 ```
 GitHub Issues ──────────────────────────────────────────┐
-YouTube Playlists (YOUTUBE_PLAYLIST_IDS, no API key)       ├──► blog/generate.py ──► _site/ ──► GitHub Pages
-Hacker News (HN_USERNAME) ──────────────────────────────┘
+YouTube channel (auto-discovered from GitHub profile)      │
+YouTube playlists (YOUTUBE_PLAYLIST_IDS, no API key)       ├──► blog/generate.py ──► _site/ ──► GitHub Pages
+Hacker News (auto-discovered, or HN_USERNAME variable) ────┘
 ```
 
 **How the updates happen:** [GitHub Actions](https://docs.github.com/en/actions) is a built-in automation system that runs code on your behalf — no server required. Each time you publish a post (or every 6 hours on a timer), GitHub spins up a temporary virtual machine called a *runner*, which fetches fresh content from all your configured sources, rebuilds the entire site from scratch, and publishes the result to [GitHub Pages](https://pages.github.com). The site looks dynamic to your readers, but it's actually a folder of plain, static HTML files — fast, free to host, and with nothing to maintain. You can watch every build happen live (or browse past runs) in the [Actions tab](../../actions).
@@ -176,10 +178,7 @@ Each source is handled by an *ingestor* (a small script that knows how to fetch 
 | [`blog/static/`](blog/static/) | CSS and favicon |
 | [`config/blocked_users.txt`](config/blocked_users.txt) | Blocked commenter usernames (one per line) |
 | [`config/hidden_labels.txt`](config/hidden_labels.txt) | Labels that hide a post from the blog (default: `hide-post`) |
-| [`config/youtube_playlists.txt.example`](config/youtube_playlists.txt.example) | Template for local YouTube config |
-| [`config/hackernews.txt.example`](config/hackernews.txt.example) | Template for local HN config |
 | [`.github/workflows/build-blog.yml`](.github/workflows/build-blog.yml) | CI/CD pipeline — runs on every Issue event, comment, push to main, and every 6 hours |
-| [`.github/workflows/setup-blog.yml`](.github/workflows/setup-blog.yml) | One-time setup: saves `HN_USERNAME` / `YOUTUBE_PLAYLIST_IDS` as [repository variables](../../settings/variables/actions) |
 | [`requirements.txt`](requirements.txt) | Python dependencies |
 
 ---
