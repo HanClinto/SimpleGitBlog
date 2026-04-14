@@ -20,7 +20,7 @@
   <header class="post__header">
     <h1 class="post__title">{{ post.title }}</h1>
     <div class="post__meta">
-      {% if post.avatar_url %}
+      {% if post.avatar_url and post.source != 'youtube' %}
       <img class="avatar" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="36" height="36" />
       {% endif %}
       <span>
