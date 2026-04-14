@@ -43,7 +43,7 @@ sys.path.insert(0, str(_REPO_ROOT))
 from jinja2 import Environment, FileSystemLoader  # noqa: E402
 import urllib.parse  # noqa: E402
 
-from blog.ingestors import github_issues, hackernews, youtube  # noqa: E402
+from blog.ingestors import github_issues, github_profile, hackernews, youtube  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -107,12 +107,27 @@ def generate_site(
 ) -> None:
     _start = time.monotonic()
 
+    repo_owner = repo.split("/")[0]
     repo_name = repo.split("/")[-1]
     repo_url = f"https://github.com/{repo}"
+
+    # Build GitHub API request headers
+    gh_headers: dict[str, str] = {"Accept": "application/vnd.github+json"}
+    if token:
+        gh_headers["Authorization"] = f"Bearer {token}"
 
     # Load config files early so we can pass them to the config page
     hidden_labels = github_issues._load_hidden_labels(CONFIG_DIR)
     blocked_users = github_issues._load_blocked_users(CONFIG_DIR)
+
+    # --- GitHub owner profile & social links ---
+    print(f"Fetching GitHub profile for: {repo_owner}…")
+    owner_profile = github_profile.fetch_owner_profile(repo_owner, gh_headers)
+    if owner_profile:
+        print(f"  Profile: {owner_profile.name or owner_profile.login}")
+        print(f"  Social links: {len(owner_profile.social_links)} found.")
+    else:
+        print("  Could not fetch GitHub profile — social link auto-discovery disabled.")
 
     # --- GitHub Issues (My Writing) — always runs ---
     print("Fetching GitHub Issues (My Writing)…")
@@ -123,12 +138,28 @@ def generate_site(
     watching_posts: list[dict] = []
     playlist_ids = youtube.load_playlist_ids(CONFIG_DIR, youtube_playlist_ids)
     channel_ids = youtube.load_channel_ids(CONFIG_DIR, youtube_channel_ids)
+
+    # Auto-discover YouTube channel from GitHub social links when not explicitly configured
+    profile_youtube_handles: list[str] = []
+    if owner_profile:
+        profile_youtube_handles = github_profile.extract_youtube_handles(owner_profile.social_links)
+    auto_discovered_channels = (
+        profile_youtube_handles
+        if (not channel_ids and profile_youtube_handles)
+        else []
+    )
+    effective_channel_ids_str = youtube_channel_ids
+    if auto_discovered_channels and not channel_ids:
+        print(f"  Auto-discovered YouTube channel(s) from GitHub profile: {auto_discovered_channels}")
+        effective_channel_ids_str = ",".join(auto_discovered_channels)
+        channel_ids = youtube.load_channel_ids(CONFIG_DIR, effective_channel_ids_str)
+
     if playlist_ids or channel_ids:
         print("Fetching YouTube content (My Watching)…")
-        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids, youtube_channel_ids)
+        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids, effective_channel_ids_str)
         print(f"  {len(watching_posts)} post(s) ingested from YouTube.")
     else:
-        print("YOUTUBE_PLAYLIST_IDS / YOUTUBE_CHANNEL_IDS not configured — skipping YouTube ingestor.")
+        print("YOUTUBE_PLAYLIST_IDS / YOUTUBE_CHANNEL_IDS not configured and none found in GitHub profile — skipping YouTube ingestor.")
 
     # --- Hacker News (My Reading) — requires HN_USERNAME ---
     reading_posts: list[dict] = []
@@ -277,6 +308,8 @@ def generate_site(
         "hn_usernames": hn_usernames or [],
         "playlist_ids": playlist_ids,
         "channel_ids": channel_ids,
+        "auto_discovered_channels": auto_discovered_channels,
+        "owner_profile": owner_profile,
         "hidden_labels": sorted(hidden_labels),
         "blocked_user_count": len(blocked_users),
         "writing_post_count": len(writing_posts),

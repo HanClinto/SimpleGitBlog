@@ -677,6 +677,26 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
 }
 .post-nav a:hover { color: #0969da; text-decoration: underline; }
 
+.config-section__subheading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 1.25rem 0 0.4rem;
+}
+
+.config-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.config-profile__avatar {
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
 /* --- Config page ------------------------------------------ */
 .config-alert {
   padding: 0.9rem 1.25rem;

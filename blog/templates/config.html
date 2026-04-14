@@ -21,6 +21,73 @@
 {% endif %}
 
 {# ------------------------------------------------------------------ #}
+{# GitHub Owner Profile & Social Links                              #}
+{# ------------------------------------------------------------------ #}
+{% if owner_profile %}
+<section class="config-section">
+  <h2 class="config-section__heading">👤 GitHub Profile</h2>
+  <div class="config-profile">
+    {% if owner_profile.avatar_url %}
+    <img class="config-profile__avatar" src="{{ owner_profile.avatar_url }}" alt="{{ owner_profile.login }}" width="56" height="56" />
+    {% endif %}
+    <div>
+      <strong>
+        <a href="https://github.com/{{ owner_profile.login }}" target="_blank" rel="noopener noreferrer">
+          {{ owner_profile.name or owner_profile.login }}
+        </a>
+      </strong>
+      {% if owner_profile.name and owner_profile.name != owner_profile.login %}
+      <span class="config-detail"> @{{ owner_profile.login }}</span>
+      {% endif %}
+      {% if owner_profile.bio %}
+      <p class="config-hint" style="margin-top:0.3rem;">{{ owner_profile.bio }}</p>
+      {% endif %}
+    </div>
+  </div>
+  {% if owner_profile.social_links %}
+  <h3 class="config-section__subheading">🔗 Linked Social Accounts</h3>
+  <table class="config-table" style="margin-top:0.5rem;">
+    <thead>
+      <tr><th>Platform</th><th>URL</th><th>Used for</th></tr>
+    </thead>
+    <tbody>
+      {% for link in owner_profile.social_links %}
+      <tr>
+        <td><strong>{{ link.provider | capitalize }}</strong></td>
+        <td>
+          <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer nofollow" class="config-detail">
+            {{ link.url }}
+          </a>
+        </td>
+        <td>
+          {% if link.provider == 'youtube' %}
+            {% if auto_discovered_channels %}
+            <span class="config-status config-status--ok">✅ Auto-discovered — My Watching</span>
+            {% else %}
+            <span class="config-status config-status--off">Overridden by YOUTUBE_CHANNEL_IDS</span>
+            {% endif %}
+          {% elif link.provider in ('twitter', 'x') %}
+          <span class="config-status config-status--off">— Displayed (future integration)</span>
+          {% elif link.provider == 'linkedin' %}
+          <span class="config-status config-status--off">— Displayed (future integration)</span>
+          {% else %}
+          <span class="config-status config-status--off">— Not yet integrated</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if owner_profile.website %}
+  <p class="config-hint">Website: <a href="{{ owner_profile.website }}" target="_blank" rel="noopener noreferrer nofollow">{{ owner_profile.website }}</a></p>
+  {% endif %}
+  {% else %}
+  <p class="config-hint">No social accounts linked on this GitHub profile.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{# ------------------------------------------------------------------ #}
 {# Content Sources                                                      #}
 {# ------------------------------------------------------------------ #}
 <section class="config-section">
@@ -53,7 +120,12 @@
           <br><span class="config-detail">{{ playlist_ids | length }} playlist{{ 's' if playlist_ids | length != 1 else '' }}</span>
           {% endif %}
           {% if channel_ids %}
-          <br><span class="config-detail">{{ channel_ids | length }} channel{{ 's' if channel_ids | length != 1 else '' }}</span>
+          <br>
+          {% if auto_discovered_channels %}
+          <span class="config-detail config-status--ok">{{ channel_ids | length }} channel{{ 's' if channel_ids | length != 1 else '' }} (auto-discovered from GitHub profile)</span>
+          {% else %}
+          <span class="config-detail">{{ channel_ids | length }} channel{{ 's' if channel_ids | length != 1 else '' }}</span>
+          {% endif %}
           {% endif %}
         </td>
         <td>My Watching</td>
