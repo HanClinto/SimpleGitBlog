@@ -20,6 +20,7 @@ import requests
 from blog.utils import extract_excerpt, format_date, format_datetime, markdown_to_safe_html
 
 _BLOCKED_USERS_FILE = "blocked_users.txt"
+_HIDDEN_LABELS_FILE = "hidden_labels.txt"
 
 # Maps GitHub reaction keys to display emoji + accessible label
 _REACTION_MAP = [
@@ -99,6 +100,29 @@ def _load_blocked_users(config_dir: Path) -> set:
         if line and not line.startswith("#"):
             blocked.add(line.lower())
     return blocked
+
+
+# ---------------------------------------------------------------------------
+# Config: hidden labels
+# ---------------------------------------------------------------------------
+
+def _load_hidden_labels(config_dir: Path) -> set:
+    """Return the set of label names that cause a post to be hidden."""
+    hidden: set[str] = set()
+    path = config_dir / _HIDDEN_LABELS_FILE
+    if not path.exists():
+        return {"hide-post"}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            hidden.add(line)
+    return hidden
+
+
+def _issue_has_hidden_label(issue: dict, hidden_labels: set) -> bool:
+    """Return True if the issue has any label in the hidden_labels set."""
+    issue_labels = {lbl["name"] for lbl in issue.get("labels", [])}
+    return bool(issue_labels & hidden_labels)
 
 
 # ---------------------------------------------------------------------------
@@ -265,6 +289,9 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
     blocked = _load_blocked_users(config_dir)
     print(f"  Blocked users: {blocked or '(none)'}")
 
+    hidden_labels = _load_hidden_labels(config_dir)
+    print(f"  Hidden labels: {hidden_labels or '(none)'}")
+
     # Primary allowed list: repo owner + collaborators with write+ access
     collaborators = _fetch_write_collaborators(repo, headers)
     display = collaborators | {repo_owner.lower()}
@@ -278,11 +305,19 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
     if skipped:
         print(f"  Skipped {skipped} issue(s) from non-collaborator author(s).")
 
+    visible_issues = [
+        i for i in allowed_issues
+        if not _issue_has_hidden_label(i, hidden_labels)
+    ]
+    hidden = len(allowed_issues) - len(visible_issues)
+    if hidden:
+        print(f"  Skipped {hidden} issue(s) with hidden label(s).")
+
     fork_owners = _fetch_fork_owners(repo, headers)
     print(f"  Forks found: {len(fork_owners)}")
 
     posts = []
-    for issue in allowed_issues:
+    for issue in visible_issues:
         num = issue["number"]
         print(f"  Processing issue #{num}: {issue['title']}")
         raw_comments = _fetch_comments(repo, num, headers)
