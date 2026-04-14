@@ -106,9 +106,7 @@ To block commenters, add their usernames to `config/blocked_users.txt`.
 
 **No API key required!** The ingestor uses YouTube's public Atom/RSS feeds, which work for any public playlist without registration or credentials.
 
-**Setup (recommended — keeps your playlist IDs out of source control):**
-
-Go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `YOUTUBE_PLAYLIST_IDS`. GitHub's variable editor supports multi-line values — add one playlist ID per line.
+**Setup:** Go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `YOUTUBE_PLAYLIST_IDS`. GitHub's variable editor supports multi-line values — add one playlist ID per line.
 
 To find a playlist ID, open the playlist on YouTube and copy the `list=` parameter:
 ```
@@ -118,8 +116,6 @@ https://www.youtube.com/playlist?list=PLILJALPUFXDmE84sBSVlGqcaDFRJ2RZ5Q
 ```
 
 > **Note:** The RSS feed returns up to the 15 most-recently-added videos per playlist. Add multiple playlist IDs (e.g. one per year) if you need more history.
-
-**Local development only:** Copy `config/youtube_playlists.txt.example` to `config/youtube_playlists.txt` and add your IDs. That file is gitignored and will never be committed.
 
 **Auto-embedding YouTube links in blog posts:** You don't even need a playlist configured to get YouTube embeds. Simply paste a YouTube video URL on its own line in any GitHub Issue (blog post):
 
@@ -139,11 +135,7 @@ The video will automatically render as a responsive embedded player — no confi
 
 [Hacker News](https://news.ycombinator.com) is a community site where people share and discuss technology links and ideas — think of it as a focused, text-first forum. No API key needed — the [Algolia HN Search API](https://hn.algolia.com/api/v1) is public.
 
-**Setup (recommended — keeps your username out of source control):**
-
-Run the **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow ([Actions tab](../../actions) → Set Up Blog → Run workflow) and enter your username in the `hn_username` input. Alternatively, go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `HN_USERNAME` with your HN username.
-
-**Local development only:** Copy `config/hackernews.txt.example` to `config/hackernews.txt` and add your username. That file is gitignored and will never be committed.
+**Setup:** Link your Hacker News profile under **Social accounts** on your [GitHub profile settings](https://github.com/settings/profile) — the username is auto-discovered from there. Alternatively, go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `HN_USERNAME` with your HN username.
 
 > **Why not commit the username?** If someone forks your blog, you don't want your personal HN activity appearing on their site by default. Storing configuration in GitHub Actions variables means each fork has its own clean settings.
 
