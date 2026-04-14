@@ -109,6 +109,10 @@ def generate_site(
     repo_name = repo.split("/")[-1]
     repo_url = f"https://github.com/{repo}"
 
+    # Load config files early so we can pass them to the config page
+    hidden_labels = github_issues._load_hidden_labels(CONFIG_DIR)
+    blocked_users = github_issues._load_blocked_users(CONFIG_DIR)
+
     # --- GitHub Issues (My Writing) — always runs ---
     print("Fetching GitHub Issues (My Writing)…")
     writing_posts = github_issues.ingest(repo, token, CONFIG_DIR)
@@ -226,6 +230,23 @@ def generate_site(
             label_html = label_tmpl.render(label_name=lbl, current_label_slug=slug, posts=lbl_posts)
             (label_dir / "index.html").write_text(label_html, encoding="utf-8")
             print(f"  Wrote labels/{slug}/index.html ({len(lbl_posts)} post(s))")
+
+    # Render config page
+    config_ctx = {
+        "hn_usernames": hn_usernames or [],
+        "playlist_ids": playlist_ids,
+        "hidden_labels": sorted(hidden_labels),
+        "blocked_user_count": len(blocked_users),
+        "writing_post_count": len(writing_posts),
+        "watching_post_count": len(watching_posts),
+        "reading_post_count": len(reading_posts),
+    }
+    config_tmpl = env.get_template("config.html")
+    config_html = config_tmpl.render(**config_ctx)
+    config_page_dir = output_dir / "config"
+    config_page_dir.mkdir(parents=True, exist_ok=True)
+    (config_page_dir / "index.html").write_text(config_html, encoding="utf-8")
+    print("Wrote config/index.html")
 
     write_nojekyll(output_dir)
     print("Wrote .nojekyll")

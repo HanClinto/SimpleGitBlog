@@ -332,7 +332,8 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
 
     # Primary allowed list: repo owner + collaborators with write+ access
     collaborators = _fetch_write_collaborators(repo, headers)
-    print(f"  Allowed posters: {repo_owner} + {len(collaborators)} write-access collaborator(s).")
+    display = collaborators | {repo_owner.lower()}
+    print(f"  Allowed posters (owner + write-access collaborators): {display}")
 
     allowed_issues = [
         i for i in raw_issues

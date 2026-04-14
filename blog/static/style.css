@@ -387,11 +387,10 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
 }
 .btn--primary:hover { background: #0550ae; color: #fff; }
 
-.btn--secondary {
-  background: #1a1a2e;
-  color: #fff;
-}
+.btn--secondary { background: #1a1a2e; color: #fff; }
 .btn--secondary:hover { background: #0f0f1e; color: #fff; }
+
+.btn--spaced { margin-left: 0.75rem; }
 
 /* --- Comments --------------------------------------------- */
 .comments {
@@ -562,6 +561,102 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
 }
 .post-nav a:hover { color: #0969da; text-decoration: underline; }
 
+/* --- Config page ------------------------------------------ */
+.config-alert {
+  padding: 0.9rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+.config-alert--warning {
+  background: #fef9c3;
+  border: 1px solid #fde047;
+  color: #713f12;
+}
+.config-alert--warning a { color: #713f12; font-weight: 600; }
+
+.config-section {
+  margin-bottom: 2.5rem;
+}
+.config-section--actions {
+  padding: 1.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.config-section__heading {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: #111;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.config-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #334155;
+  text-align: left;
+  padding: 0.5em 0.85em;
+  border: 1px solid #e2e8f0;
+}
+.config-table td {
+  padding: 0.6em 0.85em;
+  border: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.config-detail {
+  font-size: 0.8rem;
+  color: #64748b;
+  word-break: break-all;
+}
+a.config-detail { color: #64748b; }
+a.config-detail:hover { color: #0969da; }
+
+.config-status { font-size: 0.85rem; }
+.config-status--ok   { color: #15803d; }
+.config-status--off  { color: #64748b; }
+.config-status--warn { color: #92400e; }
+
+.config-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.6rem 1.5rem;
+  font-size: 0.92rem;
+}
+.config-dl dt {
+  font-weight: 600;
+  color: #334155;
+  padding-top: 0.1em;
+  white-space: nowrap;
+}
+.config-dl dd {
+  margin: 0;
+  color: #1e293b;
+}
+
+.config-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.config-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0.4rem 0 0;
+}
+
 /* --- Responsive ------------------------------------------- */
 @media (max-width: 600px) {
   html { font-size: 16px; }
@@ -570,4 +665,10 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
   .post-card { padding: 1rem 1.1rem; }
 
   .comment__header { flex-wrap: wrap; }
+
+  .config-dl {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  .config-table { font-size: 0.82rem; }
 }
