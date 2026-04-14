@@ -1,19 +1,17 @@
 name: Set Up Blog
 
-# Run this workflow once after forking to configure your blog's optional
-# integrations. It stores your settings as GitHub Actions repository
-# Variables (never committed to source) so every fork starts clean.
+# Run this workflow to configure your blog's optional integrations.
+# It stores your settings as GitHub Actions repository Variables
+# (never committed to source) so every fork starts clean.
 #
 # How to run:
 #   Go to Actions → "Set Up Blog" → Run workflow → fill in the inputs → Run.
-#   The workflow sets the variables and then triggers a fresh blog build.
+#   The workflow sets the variables and then the next build picks them up.
 #
-# Token permissions:
-#   By default this workflow uses GITHUB_TOKEN, which may lack permission to
-#   manage Actions variables in some repository configurations.  If the
-#   preflight check fails, create a fine-grained Personal Access Token (PAT)
-#   with "Actions: Read and write" permission for this repository, add it as a
-#   repository secret named SETUP_BLOG_PAT, then re-run the workflow.
+# Prerequisites (one-time, takes ~30 seconds):
+#   Go to Settings → Actions → General → Workflow permissions and select
+#   "Read and write permissions". This lets the default GITHUB_TOKEN create
+#   repository variables — no personal access token needed.
 
 on:
   workflow_dispatch:
@@ -34,16 +32,12 @@ on:
 
 permissions:
   actions: write   # needed to create / update repository variables
-  contents: write  # needed to trigger the blog build at the end
 
 jobs:
   configure:
     runs-on: ubuntu-latest
     env:
-      # Use SETUP_BLOG_PAT if provided; otherwise fall back to GITHUB_TOKEN.
-      # GITHUB_TOKEN may lack permission to manage Actions variables on some
-      # repositories.  See the header comment for how to create SETUP_BLOG_PAT.
-      GH_TOKEN: ${{ secrets.SETUP_BLOG_PAT || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Check token can manage repository variables
@@ -51,13 +45,15 @@ jobs:
           if ! gh api -X GET "repos/$GITHUB_REPOSITORY/actions/variables" --silent 2>/dev/null; then
             echo "::error::❌ The token cannot manage Actions variables for this repository."
             echo ""
-            echo "To fix this:"
-            echo "  1. Create a fine-grained Personal Access Token at:"
-            echo "       https://github.com/settings/personal-access-tokens/new"
-            echo "  2. Grant it access to this repository with 'Actions: Read and write'."
-            echo "  3. Add it as a repository secret named SETUP_BLOG_PAT:"
-            echo "       https://github.com/$GITHUB_REPOSITORY/settings/secrets/actions/new"
-            echo "  4. Re-run this workflow."
+            echo "To fix this (takes about 30 seconds):"
+            echo "  1. Go to your repository settings:"
+            echo "       https://github.com/$GITHUB_REPOSITORY/settings/actions"
+            echo "  2. Scroll down to 'Workflow permissions'."
+            echo "  3. Select 'Read and write permissions'."
+            echo "  4. Click Save, then re-run this workflow."
+            echo ""
+            echo "This one-time setting lets the built-in GITHUB_TOKEN create"
+            echo "repository variables — no personal access token is required."
             exit 1
           fi
           echo "✅ Token has permission to manage repository variables."
@@ -102,3 +98,4 @@ jobs:
         run: |
           gh variable set BLOG_CONFIGURED --body "true" --repo "$GITHUB_REPOSITORY"
           echo "✅ BLOG_CONFIGURED set."
+
