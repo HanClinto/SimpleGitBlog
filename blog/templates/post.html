@@ -13,7 +13,13 @@
       <span>
         By <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
         &mdash;
+        {% if post.source == 'github' %}
+        <a href="{{ post.source_url }}" class="post__date-link" target="_blank" rel="noopener noreferrer">
+          <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        </a>
+        {% else %}
         <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        {% endif %}
         &mdash;
         <span class="source-badge source-badge--{{ post.source }}">{{ post.source }}</span>
       </span>
@@ -48,22 +54,13 @@
   {% if post.reactions %}
   <div class="reactions" aria-label="Reactions">
     {% for r in post.reactions %}
-    <span class="reaction" title="{{ r.label }}">{{ r.emoji }} <span class="reaction__count">{{ r.count }}</span></span>
+    <span class="reaction" title="{% if r.users %}{{ r.users | join(', ') }}{% else %}{{ r.label }}{% endif %}" aria-label="{{ r.emoji }} {{ r.label }}{% if r.users %}: {{ r.users | join(', ') }}{% endif %} ({{ r.count }})">{{ r.emoji }} <span class="reaction__count">{{ r.count }}</span></span>
     {% endfor %}
   </div>
   {% endif %}
 
+  {% if post.source == 'youtube' %}
   <div class="post__actions">
-    {% if post.source == 'github' %}
-    <a
-      href="{{ post.metadata.github_issue_url }}"
-      class="btn btn--primary"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      ✏️ Edit this post on GitHub
-    </a>
-    {% elif post.source == 'youtube' %}
     <a
       href="{{ post.source_url }}"
       class="btn btn--primary"
@@ -72,7 +69,9 @@
     >
       📺 Watch on YouTube
     </a>
-    {% elif post.source == 'hackernews' %}
+  </div>
+  {% elif post.source == 'hackernews' %}
+  <div class="post__actions">
     <a
       href="{{ post.metadata.hn_url }}"
       class="btn btn--primary"
@@ -91,8 +90,8 @@
       🔗 Read the Article
     </a>
     {% endif %}
-    {% endif %}
   </div>
+  {% endif %}
 </article>
 
 {% if post.source == 'github' %}
@@ -151,7 +150,7 @@
         {% if comment.reactions %}
         <div class="reactions reactions--comment" aria-label="Reactions">
           {% for r in comment.reactions %}
-          <span class="reaction" title="{{ r.label }}">{{ r.emoji }} <span class="reaction__count">{{ r.count }}</span></span>
+          <span class="reaction" title="{% if r.users %}{{ r.users | join(', ') }}{% else %}{{ r.label }}{% endif %}" aria-label="{{ r.emoji }} {{ r.label }}{% if r.users %}: {{ r.users | join(', ') }}{% endif %} ({{ r.count }})">{{ r.emoji }} <span class="reaction__count">{{ r.count }}</span></span>
           {% endfor %}
         </div>
         {% endif %}
@@ -164,7 +163,7 @@
 
   <div class="comments__cta">
     <a
-      href="{{ post.metadata.github_issue_url }}"
+      href="{{ post.source_url }}"
       class="btn btn--secondary"
       target="_blank"
       rel="noopener noreferrer"

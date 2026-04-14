@@ -172,6 +172,7 @@ def _process_entry(entry: dict, playlist_id: str) -> dict | None:
         "source":         "youtube",
         "section":        "watching",
         "labels":         [],
+        "reactions":      [],
         "comment_count":  0,
         "comments":       [],
         "metadata": {

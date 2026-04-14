@@ -20,6 +20,8 @@ import requests
 from blog.utils import extract_excerpt, format_date, format_datetime, markdown_to_safe_html
 
 _BLOCKED_USERS_FILE = "blocked_users.txt"
+_HIDDEN_LABELS_FILE = "hidden_labels.txt"
+_DEFAULT_HIDDEN_LABELS: set[str] = {"hide-post"}
 
 # Maps GitHub reaction keys to display emoji + accessible label
 _REACTION_MAP = [
@@ -102,6 +104,29 @@ def _load_blocked_users(config_dir: Path) -> set:
 
 
 # ---------------------------------------------------------------------------
+# Config: hidden labels
+# ---------------------------------------------------------------------------
+
+def _load_hidden_labels(config_dir: Path) -> set[str]:
+    """Return the set of label names that cause a post to be hidden."""
+    hidden: set[str] = set()
+    path = config_dir / _HIDDEN_LABELS_FILE
+    if not path.exists():
+        return set(_DEFAULT_HIDDEN_LABELS)
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            hidden.add(line)
+    return hidden
+
+
+def _issue_has_hidden_label(issue: dict, hidden_labels: set[str]) -> bool:
+    """Return True if the issue has any label in the hidden_labels set."""
+    issue_labels = {lbl["name"] for lbl in issue.get("labels", [])}
+    return bool(issue_labels & hidden_labels)
+
+
+# ---------------------------------------------------------------------------
 # Collaborators: who has write access to this repo?
 # ---------------------------------------------------------------------------
 
@@ -141,15 +166,38 @@ def _is_allowed_poster(login: str, repo_owner: str, collaborators: set[str]) -> 
 # Reactions
 # ---------------------------------------------------------------------------
 
-def _parse_reactions(reactions_raw: dict | None) -> list[dict]:
-    """Convert a GitHub reactions object to a list of {emoji, label, count}."""
+def _fetch_reaction_users(url: str, headers: dict) -> dict[str, list[str]]:
+    """Fetch the list of users per reaction type from a GitHub reactions endpoint.
+
+    Returns a mapping of reaction key (e.g. '+1') to a list of GitHub logins.
+    Returns an empty dict on any API error.
+    """
+    try:
+        reactions = _paginate(url, headers)
+        result: dict[str, list[str]] = {}
+        for r in reactions:
+            content = r.get("content", "")
+            login = r.get("user", {}).get("login", "")
+            if content and login:
+                result.setdefault(content, []).append(login)
+        return result
+    except requests.HTTPError:
+        return {}
+
+
+def _parse_reactions(
+    reactions_raw: dict | None,
+    users_by_key: dict[str, list[str]] | None = None,
+) -> list[dict]:
+    """Convert a GitHub reactions object to a list of {emoji, label, count, users}."""
     if not reactions_raw:
         return []
     result = []
     for key, emoji, label in _REACTION_MAP:
         count = reactions_raw.get(key, 0)
         if count > 0:
-            result.append({"emoji": emoji, "label": label, "count": count})
+            users = (users_by_key or {}).get(key, [])
+            result.append({"emoji": emoji, "label": label, "count": count, "users": users})
     return result
 
 
@@ -181,9 +229,9 @@ def _process_issue(
     fork_owners: set,
     repo: str,
     repo_name: str,
+    headers: dict,
 ) -> dict:
     """Transform a raw GitHub issue + comments into the common post schema."""
-    repo_owner_lc = repo.split("/")[0].lower()
     issue_number = issue["number"]
 
     comments = [
@@ -199,6 +247,14 @@ def _process_issue(
             f"https://github.com/{repo}/issues/{issue_number}"
             f"#issuecomment-{c['id']}"
         )
+        # Fetch per-user reaction details for comments that have reactions
+        comment_reaction_users: dict[str, list[str]] = {}
+        c_reactions_raw = c.get("reactions") or {}
+        if c_reactions_raw.get("total_count", 0) > 0:
+            reaction_url = c_reactions_raw.get("url", "")
+            if reaction_url:
+                comment_reaction_users = _fetch_reaction_users(reaction_url, headers)
+
         processed_comments.append({
             "id": c["id"],
             "author": login,
@@ -209,7 +265,7 @@ def _process_issue(
             "created_at_iso": format_datetime(c["created_at"]),
             "comment_url": comment_url,
             "body_html": markdown_to_safe_html(c.get("body") or ""),
-            "reactions": _parse_reactions(c.get("reactions")),
+            "reactions": _parse_reactions(c_reactions_raw, comment_reaction_users),
             "fork_blog_url": _build_fork_blog_url(login, repo_name) if is_forker else None,
         })
 
@@ -222,6 +278,14 @@ def _process_issue(
         if lbl["name"] != "blog-post"
     ]
 
+    # Fetch per-user reaction details for the issue itself
+    issue_reactions_raw = issue.get("reactions") or {}
+    issue_reaction_users: dict[str, list[str]] = {}
+    if issue_reactions_raw.get("total_count", 0) > 0:
+        reaction_url = issue_reactions_raw.get("url", "")
+        if reaction_url:
+            issue_reaction_users = _fetch_reaction_users(reaction_url, headers)
+
     return {
         "post_id": post_id,
         "title": issue["title"],
@@ -233,17 +297,15 @@ def _process_issue(
         "created_at": issue["created_at"],
         "created_at_fmt": format_date(issue["created_at"]),
         "created_at_iso": format_datetime(issue["created_at"]),
-        "updated_at": issue.get("updated_at", issue["created_at"]),
         "body_html": markdown_to_safe_html(issue.get("body") or ""),
         "excerpt": extract_excerpt(issue.get("body") or ""),
         "source": "github",
         "section": "writing",
         "labels": labels,
-        "reactions": _parse_reactions(issue.get("reactions")),
+        "reactions": _parse_reactions(issue_reactions_raw, issue_reaction_users),
         "comment_count": len(processed_comments),
         "comments": processed_comments,
         "metadata": {
-            "github_issue_url": issue["html_url"],
             "number": issue_number,
         },
     }
@@ -265,6 +327,9 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
     blocked = _load_blocked_users(config_dir)
     print(f"  Blocked users: {blocked or '(none)'}")
 
+    hidden_labels = _load_hidden_labels(config_dir)
+    print(f"  Hidden labels: {hidden_labels or '(none)'}")
+
     # Primary allowed list: repo owner + collaborators with write+ access
     collaborators = _fetch_write_collaborators(repo, headers)
     display = collaborators | {repo_owner.lower()}
@@ -278,15 +343,23 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
     if skipped:
         print(f"  Skipped {skipped} issue(s) from non-collaborator author(s).")
 
+    visible_issues = [
+        i for i in allowed_issues
+        if not _issue_has_hidden_label(i, hidden_labels)
+    ]
+    hidden = len(allowed_issues) - len(visible_issues)
+    if hidden:
+        print(f"  Skipped {hidden} issue(s) with hidden label(s).")
+
     fork_owners = _fetch_fork_owners(repo, headers)
     print(f"  Forks found: {len(fork_owners)}")
 
     posts = []
-    for issue in allowed_issues:
+    for issue in visible_issues:
         num = issue["number"]
         print(f"  Processing issue #{num}: {issue['title']}")
         raw_comments = _fetch_comments(repo, num, headers)
-        post = _process_issue(issue, raw_comments, blocked, fork_owners, repo, repo_name)
+        post = _process_issue(issue, raw_comments, blocked, fork_owners, repo, repo_name, headers)
         posts.append(post)
 
     posts.sort(key=lambda p: p["created_at"], reverse=True)
