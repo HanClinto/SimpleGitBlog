@@ -33,6 +33,13 @@
       {% if post.excerpt %}
       <p class="post-card__excerpt">{{ post.excerpt }}</p>
       {% endif %}
+      {% if post.labels %}
+      <div class="post-card__labels">
+        {% for lbl in post.labels %}
+        <a href="{{ base_path }}labels/{{ label_slug(lbl) }}/" class="label">{{ lbl }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
       <a class="post-card__read-more" href="{{ post.post_url }}">Read more &rarr;</a>
     </article>
     {% endfor %}
@@ -48,9 +55,23 @@
       <p>No blog posts yet.</p>
       <p>
         To publish your first post, <a href="{{ repo_url }}/issues/new" target="_blank" rel="noopener noreferrer">open a new issue</a>
-        on GitHub and add the <code>blog-post</code> label.
+        on GitHub. No special label needed — any issue you open will appear here automatically.
       </p>
     </div>
   </section>
+{% endif %}
+
+{% if all_labels %}
+<aside class="labels-sidebar">
+  <h2 class="labels-sidebar__heading">Browse by label</h2>
+  <ul class="label-list">
+    {% for lbl_info in all_labels %}
+    <li>
+      <a href="{{ base_path }}labels/{{ lbl_info.slug }}/" class="label">{{ lbl_info.name }}</a>
+      <span class="label-count">{{ lbl_info.count }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</aside>
 {% endif %}
 {% endblock %}

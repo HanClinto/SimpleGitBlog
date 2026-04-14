@@ -21,7 +21,7 @@
     {% if post.labels %}
     <div class="post__labels">
       {% for label in post.labels %}
-        <span class="label">{{ label }}</span>
+        <a href="{{ base_path }}labels/{{ label_slug(label) }}/" class="label">{{ label }}</a>
       {% endfor %}
     </div>
     {% endif %}
@@ -42,6 +42,14 @@
   {% if post.body_html %}
   <div class="post__body prose">
     {{ post.body_html | safe }}
+  </div>
+  {% endif %}
+
+  {% if post.reactions %}
+  <div class="reactions" aria-label="Reactions">
+    {% for r in post.reactions %}
+    <span class="reaction" title="{{ r.label }}">{{ r.emoji }} <span class="reaction__count">{{ r.count }}</span></span>
+    {% endfor %}
   </div>
   {% endif %}
 
@@ -127,14 +135,26 @@
               >🔀 Their blog</a>
             {% endif %}
             <br />
-            <time class="comment__date" datetime="{{ comment.created_at_iso }}">
-              {{ comment.created_at_fmt }}
-            </time>
+            <a
+              href="{{ comment.comment_url }}"
+              class="comment__date"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <time datetime="{{ comment.created_at_iso }}">{{ comment.created_at_fmt }}</time>
+            </a>
           </div>
         </div>
         <div class="comment__body prose">
           {{ comment.body_html | safe }}
         </div>
+        {% if comment.reactions %}
+        <div class="reactions reactions--comment" aria-label="Reactions">
+          {% for r in comment.reactions %}
+          <span class="reaction" title="{{ r.label }}">{{ r.emoji }} <span class="reaction__count">{{ r.count }}</span></span>
+          {% endfor %}
+        </div>
+        {% endif %}
       </li>
       {% endfor %}
     </ol>

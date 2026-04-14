@@ -4,18 +4,21 @@ A static blog engine that pulls content from multiple sources and publishes them
 
 Content is organised into thematic sections:
 
-| Section | Source | Label |
+| Section | Source | Notes |
 |---------|--------|-------|
-| ✍️ **My Writing** | GitHub Issues labelled `blog-post` | always on |
-| 📺 **My Watching** | YouTube playlist videos | set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
-| 📰 **My Reading** | Hacker News submissions & comments | set `HN_USERNAME` |
+| ✍️ **My Writing** | GitHub Issues | Any issue from a repo collaborator is a post — no label needed |
+| 📺 **My Watching** | YouTube playlist videos | Set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
+| 📰 **My Reading** | Hacker News submissions & comments | Set `HN_USERNAME` |
 
 ---
 
 ## ✨ Features
 
 - **WYSIWYG authoring** — use GitHub's built-in Issue editor (Markdown, images, code blocks, mentions)
-- **Comment threads** — Issue comments become blog comment threads
+- **Zero-label publishing** — every issue you open is automatically a blog post; no special label required
+- **Comment threads** — Issue comments become blog comment threads; click any comment date to jump to it on GitHub
+- **Emoji reactions** — 👍 ❤️ 🎉 and other GitHub reactions are shown on posts and comments
+- **Label organisation** — apply any GitHub label to your issues; the blog generates a browsable label index automatically
 - **YouTube embeds** — playlist videos render as responsive embedded players; paste any YouTube URL on its own line in a post to auto-embed it (no API key needed)
 - **HN activity** — your Hacker News stories and comments appear automatically
 - **XSS-safe** — all user content is sanitised with `bleach` before rendering
@@ -40,13 +43,27 @@ Go to **Settings → Pages** and set the source to the `gh-pages` branch (it wil
 
 Go to **Settings → Actions → General → Workflow permissions** and select **Read and write permissions**.
 
-### 4. Publish your first post
+### 4. Configure your blog (optional)
+
+Connect optional content sources — no code or API keys needed:
+
+| What to set | Where it shows up | How |
+|-------------|-------------------|-----|
+| Your **Hacker News username** | [My Reading](#my-reading--hacker-news) section | Run the **[Set Up Blog](.github/workflows/setup-blog.yml)** workflow (Actions tab → Set Up Blog → Run workflow) |
+| Your **YouTube playlist ID(s)** | [My Watching](#my-watching--youtube-playlists) section | Same workflow, or add a `YOUTUBE_PLAYLIST_IDS` [repository variable](../../settings/variables/actions) |
+
+The **Set Up Blog** workflow saves your settings as [GitHub Actions repository Variables](../../settings/variables/actions) (Settings → Secrets and variables → Actions → Variables). Settings are stored per-fork, so they never appear in source code and forks start with a clean slate.
+
+> **Tip:** You can skip this step entirely and come back later — the blog works out of the box with just GitHub Issues.
+
+### 5. Publish your first post
 
 1. Open a new Issue in your forked repository.
 2. Give it a descriptive **title** — this becomes your post title.
 3. Write your content in the body using Markdown.
-4. Add the label **`blog-post`** to the issue.
-5. The GitHub Action will trigger automatically and rebuild your site within a minute or two.
+4. The GitHub Action will trigger automatically and rebuild your site within a minute or two.
+
+That's it — no labels required. Any open issue you author is published as a blog post. If you want to organise posts by topic, add any GitHub label to the issue and the blog will generate a browsable label page for it automatically.
 
 Your post will be live at `https://<your-username>.github.io/<repo-name>/`.
 
@@ -56,19 +73,19 @@ Your post will be live at `https://<your-username>.github.io/<repo-name>/`.
 
 ### My Writing — GitHub Issues
 
-By default, only the **repository owner** can publish blog posts. Issues opened by other users with the `blog-post` label are silently skipped.
+Any open Issue authored by the **repository owner or a collaborator with write access** is automatically published as a blog post. No special label is required.
 
-To grant additional users posting rights, add their GitHub usernames to `config/allowed_posters.txt`:
+**Who can post?**
 
-```
-# config/allowed_posters.txt
-alice
-bob
-```
-
-To allow **anyone** to publish (open-contributor mode), add a `*` line. The repository owner is always implicitly allowed regardless of the file contents.
+| User | Publishes automatically? |
+|------|--------------------------|
+| Repository owner | ✅ Yes |
+| Collaborator with Write / Maintain / Admin access | ✅ Yes |
+| Other GitHub users | ❌ No |
 
 To block commenters, add their usernames to `config/blocked_users.txt`.
+
+**Organising posts with labels:** Add any GitHub label to an issue and the blog will automatically generate a `/labels/{label}/` page for it. Labels appear as clickable links on the index page and each post.
 
 ---
 
@@ -78,7 +95,7 @@ To block commenters, add their usernames to `config/blocked_users.txt`.
 
 **Setup (recommended — keeps your playlist IDs out of source control):**
 
-In your GitHub repo, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
+Run the **Set Up Blog** workflow (Actions tab → Set Up Blog → Run workflow) and enter your playlist ID(s) in the `youtube_playlist_ids` input. Alternatively, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
 
 To find a playlist ID, open the playlist on YouTube and copy the `list=` parameter:
 ```
@@ -111,7 +128,7 @@ No API key needed — the [Algolia HN Search API](https://hn.algolia.com/api/v1)
 
 **Setup (recommended — keeps your username out of source control):**
 
-In your GitHub repo, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `HN_USERNAME` with your HN username.
+Run the **Set Up Blog** workflow (Actions tab → Set Up Blog → Run workflow) and enter your username in the `hn_username` input. Alternatively, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `HN_USERNAME` with your HN username.
 
 **Local development only:** Copy `config/hackernews.txt.example` to `config/hackernews.txt` and add your username. That file is gitignored and will never be committed.
 
@@ -159,11 +176,11 @@ Each source is handled by an *ingestor* in `blog/ingestors/`. Every ingestor pro
 | `blog/ingestors/hackernews.py` | 📰 My Reading ingestor |
 | `blog/templates/` | Jinja2 HTML templates |
 | `blog/static/` | CSS and favicon |
-| `config/allowed_posters.txt` | GitHub usernames allowed to author blog posts |
 | `config/blocked_users.txt` | Blocked commenter usernames |
 | `config/youtube_playlists.txt.example` | Template for local YouTube config |
 | `config/hackernews.txt.example` | Template for local HN config |
 | `.github/workflows/build-blog.yml` | CI/CD pipeline |
+| `.github/workflows/setup-blog.yml` | One-time setup: set `HN_USERNAME` / `YOUTUBE_PLAYLIST_IDS` via the Actions UI |
 | `requirements.txt` | Python dependencies |
 
 ---

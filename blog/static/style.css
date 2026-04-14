@@ -258,7 +258,11 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
   font-weight: 600;
   background: #dbeafe;
   color: #1d4ed8;
+  text-decoration: none;
 }
+.label:hover { background: #bfdbfe; color: #1e3a8a; }
+.label--active { background: #1d4ed8; color: #fff; }
+.label--page { font-size: 1.1rem; padding: 0.2em 0.7em; }
 
 /* --- Prose (rich content) --------------------------------- */
 .prose {
@@ -455,7 +459,85 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
   color: #64748b;
 }
 
-/* --- Post nav --------------------------------------------- */
+/* --- Post card labels ------------------------------------- */
+.post-card__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.6rem;
+}
+
+/* --- Reactions -------------------------------------------- */
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+}
+
+.reactions--comment {
+  margin: 0.6rem 0 0;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  padding: 0.2em 0.55em;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  cursor: default;
+}
+
+.reaction__count {
+  font-weight: 600;
+  color: #334155;
+}
+
+/* --- Labels sidebar --------------------------------------- */
+.labels-sidebar {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e2e8f0;
+}
+
+.labels-sidebar__heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 1rem;
+}
+
+.label-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.label-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.label-count {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* --- Breadcrumb ------------------------------------------- */
+.breadcrumb {
+  margin-bottom: 1.5rem;
+  font-size: 0.88rem;
+}
+.breadcrumb a { color: #64748b; text-decoration: none; }
+.breadcrumb a:hover { color: #0969da; text-decoration: underline; }
 .post-nav {
   margin-top: 2.5rem;
   font-size: 0.9rem;

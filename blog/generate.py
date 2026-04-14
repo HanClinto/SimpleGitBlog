@@ -25,9 +25,11 @@ Environment variables:
 """
 
 import os
+import re
 import shutil
 import sys
 import time
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,6 +41,7 @@ _REPO_ROOT = Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(_REPO_ROOT))
 
 from jinja2 import Environment, FileSystemLoader  # noqa: E402
+import urllib.parse  # noqa: E402
 
 from blog.ingestors import github_issues, hackernews, youtube  # noqa: E402
 
@@ -75,6 +78,18 @@ def copy_static(output_dir: Path) -> None:
 
 def write_nojekyll(output_dir: Path) -> None:
     (output_dir / ".nojekyll").write_text("", encoding="utf-8")
+
+
+def label_slug(label: str) -> str:
+    """Convert a label name to a URL-safe path segment.
+
+    ASCII-only labels become clean hyphenated slugs (e.g. "bug fix" → "bug-fix").
+    Labels that are entirely non-ASCII (e.g. emoji-only "🚀") fall back to
+    percent-encoding so the slug is always unique and valid in a URL path.
+    """
+    normalized = unicodedata.normalize("NFKD", label).encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
+    return slug or urllib.parse.quote(label, safe="")
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +173,19 @@ def generate_site(
     env.globals["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     env.globals["generated_in"] = f"{time.monotonic() - _start:.1f}s"
 
+    # Pre-compute labels so templates can link to /labels/{slug}/ pages
+    label_map: dict[str, list[dict]] = {}
+    for post in writing_posts:
+        for lbl in post.get("labels", []):
+            label_map.setdefault(lbl, []).append(post)
+    all_labels = sorted(
+        [{"name": lbl, "slug": label_slug(lbl), "count": len(posts)}
+         for lbl, posts in label_map.items()],
+        key=lambda x: (-x["count"], x["name"]),
+    )
+    env.globals["all_labels"] = all_labels
+    env.globals["label_slug"] = label_slug
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Render index page
@@ -177,6 +205,17 @@ def generate_site(
 
     copy_static(output_dir)
     print("Copied static assets.")
+
+    # Render per-label pages
+    if label_map:
+        label_tmpl = env.get_template("label.html")
+        for lbl, lbl_posts in label_map.items():
+            slug = label_slug(lbl)
+            label_dir = output_dir / "labels" / slug
+            label_dir.mkdir(parents=True, exist_ok=True)
+            label_html = label_tmpl.render(label_name=lbl, label_slug=slug, posts=lbl_posts)
+            (label_dir / "index.html").write_text(label_html, encoding="utf-8")
+            print(f"  Wrote labels/{slug}/index.html ({len(lbl_posts)} post(s))")
 
     write_nojekyll(output_dir)
     print("Wrote .nojekyll")
