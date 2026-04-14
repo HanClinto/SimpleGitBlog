@@ -28,7 +28,7 @@
   {% endif %}
   {% if post.labels %}
   <div class="post-card__labels">
-    {% for lbl in post.labels %}
+    {% for lbl in post.labels if lbl != 'Blog Post' %}
     <a href="{{ base_path }}labels/{{ label_slug(lbl) }}/" class="label">{{ lbl }}</a>
     {% endfor %}
   </div>

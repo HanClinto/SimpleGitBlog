@@ -173,6 +173,11 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
 }
 .post-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.08); }
 
+/* Subtle left-border accent per content source */
+.post-card--github     { border-left: 3px solid #0969da; }
+.post-card--youtube    { border-left: 3px solid #dc2626; }
+.post-card--hackernews { border-left: 3px solid #ea580c; }
+
 .post-card__title {
   font-size: 1.25rem;
   font-weight: 700;
