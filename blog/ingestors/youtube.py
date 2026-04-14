@@ -114,7 +114,7 @@ def _resolve_channel_id(handle_or_id: str) -> str | None:
     Returns the channel ID string, or ``None`` if resolution fails.
     """
     # Already looks like a channel ID
-    if re.match(r'^UC[A-Za-z0-9_-]{20,}$', handle_or_id):
+    if re.match(r'^UC[A-Za-z0-9_-]{22}$', handle_or_id):
         return handle_or_id
 
     # Build the canonical channel URL
@@ -328,9 +328,8 @@ def ingest(
         entries = _fetch_channel_feed(channel_id)
         print(f"    {len(entries)} video(s) found.")
         # Build a human-friendly "view more" URL using the original handle if given
-        if raw_id.startswith("@") or not raw_id.startswith("UC"):
-            handle = raw_id if raw_id.startswith("@") else f"@{raw_id}"
-            view_more_url = f"https://www.youtube.com/{handle}/videos"
+        if raw_id.startswith("@"):
+            view_more_url = f"https://www.youtube.com/{raw_id}/videos"
         else:
             view_more_url = f"https://www.youtube.com/channel/{channel_id}/videos"
         for entry in entries:

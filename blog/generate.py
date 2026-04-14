@@ -193,9 +193,8 @@ def generate_site(
     # --- Sidebar data ---
     # Split HN posts into stories vs. comments for separate sidebar panels
     _SIDEBAR_LIMIT = 5
-    hn_stories  = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
+    hn_stories = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
     hn_comments = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "comment"]
-
     # Build per-username HN profile links (use first username if multiple)
     _hn_user = (hn_usernames or [None])[0]
     hn_submitted_url = (

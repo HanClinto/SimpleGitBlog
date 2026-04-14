@@ -129,20 +129,20 @@ def extract_youtube_handles(social_links: list[SocialLink]) -> list[str]:
             continue
         url = link.url.rstrip("/")
 
-        # @handle form
-        m = re.search(r'youtube\.com/(@[A-Za-z0-9_.-]+)', url, re.IGNORECASE)
+        # @handle form — handles only allow letters, digits, underscores, hyphens
+        m = re.search(r'youtube\.com/(@[A-Za-z0-9_-]+)', url, re.IGNORECASE)
         if m:
             handles.append(m.group(1))
             continue
 
-        # /channel/UCxxxxxxxx
-        m = re.search(r'youtube\.com/channel/(UC[A-Za-z0-9_-]{20,})', url, re.IGNORECASE)
+        # /channel/UCxxxxxxxx (UC + exactly 22 base64-ish chars)
+        m = re.search(r'youtube\.com/channel/(UC[A-Za-z0-9_-]{22})', url, re.IGNORECASE)
         if m:
             handles.append(m.group(1))
             continue
 
-        # /c/slug or /user/slug — treat as @slug
-        m = re.search(r'youtube\.com/(?:c|user)/([A-Za-z0-9_.-]+)', url, re.IGNORECASE)
+        # /c/slug or /user/slug — treat as @slug (allow dots for legacy /user/ names)
+        m = re.search(r'youtube\.com/(?:c|user)/([A-Za-z0-9_-]+)', url, re.IGNORECASE)
         if m:
             handles.append(f"@{m.group(1)}")
             continue
