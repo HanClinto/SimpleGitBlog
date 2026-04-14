@@ -129,9 +129,19 @@
           {% if channel_ids %}
           <br>
           {% if auto_discovered_channels %}
-          <span class="config-detail config-status--ok">auto-discovered from GitHub profile</span>
+          <span class="config-detail config-status--ok">
+            {% for handle in auto_discovered_channels %}
+            <a href="https://www.youtube.com/{{ handle }}" target="_blank" rel="noopener noreferrer nofollow">{{ handle }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+            (auto-discovered from GitHub profile)
+          </span>
           {% else %}
-          <span class="config-detail">(via <code>YOUTUBE_CHANNEL_IDS</code>)</span>
+          <span class="config-detail">
+            {% for cid in channel_ids %}
+            <a href="https://www.youtube.com/channel/{{ cid }}" target="_blank" rel="noopener noreferrer nofollow">{{ cid }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+            (via <code>YOUTUBE_CHANNEL_IDS</code>)
+          </span>
           {% endif %}
           {% endif %}
         </td>
