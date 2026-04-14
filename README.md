@@ -1,6 +1,6 @@
 A simple blog, powered by Github.
 
-Want a blog? [Fork this repo](https://github.com/HanClinto/SimpleGitBlog/fork), no configuration needed. Write posts as [Issues](https://github.com/HanClinto/SimpleGitBlog/issues). The project picks them up and formats them for your website. Instant blog for you. Minimal configuration. Transparent. Everything lives in Github.
+Want a blog? [Fork this repo](https://github.com/HanClinto/SimpleGitBlog/fork), no configuration needed. Write posts as [Issues](https://github.com/HanClinto/SimpleGitBlog/issues). The project picks them up automatically. [Instant blog for you](https://hanclinto.github.io/SimpleGitBlog/). Minimal configuration. Transparent. Everything lives in Github.
 
 I don't know if anyone else would ever want to use my AI-coded slop when they can vibe their own, but in case you do, it's batteries-included.
 
@@ -10,7 +10,7 @@ It feels social and dynamic, yet lives on a static site. Supports comments and r
 
 Want to let someone else post on your blog? Add them as a collaborator on the repo.
 
-Want to embed YouTube videos? Just [paste a URL in your writeup](https://github.com/HanClinto/SimpleGitBlog/issues/5). It's all very clean.
+Want to embed YouTube videos? Just [paste a URL in your writeup](https://github.com/HanClinto/SimpleGitBlog/issues/5) and it [embeds in the post](https://hanclinto.github.io/SimpleGitBlog/posts/gh-5/).
 
 ## Github Profile-Based Configuration
 Want to add data from other feeds? Add them to your Github Profile page, and the blog will pick it up automatically. Configure your Github profile social links like this:
