@@ -2,6 +2,19 @@
 
 {% block title %}{{ post.title }} &mdash; {{ repo_name }}{% endblock %}
 
+{% block meta %}
+<meta name="description" content="{{ post.excerpt if post.excerpt else post.title }}" />
+<meta property="og:title" content="{{ post.title }}" />
+<meta property="og:description" content="{{ post.excerpt if post.excerpt else post.title }}" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="{{ post.post_url }}" />
+{% if post.source == 'youtube' and post.avatar_url %}
+<meta property="og:image" content="{{ post.avatar_url }}" />
+{% elif post.avatar_url %}
+<meta property="og:image" content="{{ post.avatar_url }}" />
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <article class="post">
   <header class="post__header">
