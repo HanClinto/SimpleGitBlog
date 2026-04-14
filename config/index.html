@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog Configuration &mdash; SimpleGitBlog</title>
+  <link rel="icon" type="image/svg+xml" href="/SimpleGitBlog/static/favicon.svg" />
+  <link rel="stylesheet" href="/SimpleGitBlog/static/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="/SimpleGitBlog/" class="site-title">SimpleGitBlog</a>
+      <nav class="site-nav">
+        <a href="/SimpleGitBlog/">Home</a>
+        <a href="/SimpleGitBlog/config/">Config</a>
+        <a href="https://github.com/HanClinto/SimpleGitBlog" target="_blank" rel="noopener noreferrer">GitHub</a>
+        
+        <a
+          href="/SimpleGitBlog/config/"
+          class="setup-warning"
+          title="This blog hasn't been set up yet. Click to view configuration and run the Set Up Blog workflow."
+        >⚠️ Set up blog</a>
+        
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    
+<nav class="breadcrumb">
+  <a href="/SimpleGitBlog/">&larr; Home</a>
+</nav>
+
+<h1 class="page-heading">🔧 Blog Configuration</h1>
+
+
+<div class="config-alert config-alert--warning">
+  <strong>⚠️ First-time setup not yet run.</strong>
+  The &ldquo;Set Up Blog&rdquo; workflow hasn&rsquo;t been run yet. Optional integrations
+  (YouTube, Hacker News) may not be configured.
+  <a href="https://github.com/HanClinto/SimpleGitBlog/actions/workflows/setup-blog.yml" target="_blank" rel="noopener noreferrer">
+    Run it now &rarr;
+  </a>
+</div>
+
+
+
+
+
+<section class="config-section">
+  <h2 class="config-section__heading">📡 Content Sources</h2>
+  <table class="config-table">
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th>Section</th>
+        <th>Status</th>
+        <th>Posts</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>✍️ GitHub Issues</strong><br>
+          <a href="https://github.com/HanClinto/SimpleGitBlog/issues" target="_blank" rel="noopener noreferrer" class="config-detail">
+            https://github.com/HanClinto/SimpleGitBlog/issues
+          </a>
+        </td>
+        <td>My Writing</td>
+        <td><span class="config-status config-status--ok">✅ Always active</span></td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td>
+          <strong>📺 YouTube</strong>
+          
+        </td>
+        <td>My Watching</td>
+        <td>
+          
+          <span class="config-status config-status--off">— Not configured</span>
+          
+        </td>
+        <td>0</td>
+      </tr>
+      <tr>
+        <td>
+          <strong>📰 Hacker News</strong>
+          
+        </td>
+        <td>My Reading</td>
+        <td>
+          
+          <span class="config-status config-status--off">— Not configured</span>
+          
+        </td>
+        <td>0</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+
+
+
+<section class="config-section">
+  <h2 class="config-section__heading">🔒 Content Filtering</h2>
+  <dl class="config-dl">
+    <dt>Hidden labels</dt>
+    <dd>
+      
+      Issues tagged with any of these labels are silently excluded from the blog:
+      <div class="config-labels">
+        
+        <span class="label">hide-post</span>
+        
+      </div>
+      
+      <p class="config-hint">
+        Edit <code>config/hidden_labels.txt</code> in the repository to add or remove labels.
+      </p>
+    </dd>
+
+    <dt>Blocked commenters</dt>
+    <dd>
+      
+      <em>None — no commenters are currently blocked.</em>
+      
+      <p class="config-hint">
+        Edit <code>config/blocked_users.txt</code> in the repository to manage the block list.
+      </p>
+    </dd>
+  </dl>
+</section>
+
+
+
+
+<section class="config-section">
+  <h2 class="config-section__heading">🏗️ Build Info</h2>
+  <dl class="config-dl">
+    <dt>Repository</dt>
+    <dd><a href="https://github.com/HanClinto/SimpleGitBlog" target="_blank" rel="noopener noreferrer">https://github.com/HanClinto/SimpleGitBlog</a></dd>
+
+    <dt>Last generated</dt>
+    <dd>
+      <a href="https://github.com/HanClinto/SimpleGitBlog/actions/runs/24376432515" target="_blank" rel="noopener noreferrer">2026-04-14 01:44 UTC</a>
+      (in 1.4s)
+    </dd>
+
+    <dt>Setup status</dt>
+    <dd>
+      
+      <span class="config-status config-status--warn">⚠️ Set Up Blog workflow has not been run yet</span>
+      
+    </dd>
+  </dl>
+</section>
+
+
+
+
+<section class="config-section config-section--actions">
+  <h2 class="config-section__heading">⚙️ Actions</h2>
+  <p>Use the <strong>Set Up Blog</strong> workflow to configure or update optional integrations
+     (YouTube playlists, Hacker News username) without editing any source files.</p>
+  <a
+    href="https://github.com/HanClinto/SimpleGitBlog/actions/workflows/setup-blog.yml"
+    class="btn btn--primary"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    ▶ Run Set Up Blog workflow
+  </a>
+  <a
+    href="https://github.com/HanClinto/SimpleGitBlog/actions/runs/24376432515"
+    class="btn btn--secondary btn--spaced"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    📋 View pipeline runs
+  </a>
+</section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>
+        Powered by <a href="https://github.com/HanClinto/SimpleGitBlog" target="_blank" rel="noopener noreferrer">SimpleGitBlog</a>
+        &mdash; <a href="https://github.com/HanClinto/SimpleGitBlog/actions/runs/24376432515" target="_blank" rel="noopener noreferrer">generated 2026-04-14 01:44 UTC</a> in 1.4s.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
