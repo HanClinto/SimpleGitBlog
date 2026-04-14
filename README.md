@@ -1,12 +1,12 @@
 # SimpleGitBlog
 
-A static blog engine that pulls content from multiple sources and publishes them to GitHub Pages — no CMS, no database, no complex infrastructure.
+A static blog engine that pulls content from multiple sources and publishes them to [GitHub Pages](https://pages.github.com) — no CMS, no database, no complex infrastructure.
 
 Content is organised into thematic sections:
 
 | Section | Source | Notes |
 |---------|--------|-------|
-| ✍️ **My Writing** | GitHub Issues | Any issue from a repo collaborator is a post — no label needed |
+| ✍️ **My Writing** | [GitHub Issues](../../issues) | Any issue from a repo collaborator is a post — no label needed |
 | 📺 **My Watching** | YouTube playlist videos | Set `YOUTUBE_PLAYLIST_IDS` (no API key needed) |
 | 📰 **My Reading** | Hacker News submissions & comments | Set `HN_USERNAME` |
 
@@ -16,7 +16,7 @@ Content is organised into thematic sections:
 
 SimpleGitBlog is built around a few core ideas. All contributors and agents should keep these in mind:
 
-1. **Content lives in repo metadata, never in source files.** Blog posts are GitHub Issues, comments are Issue comments, and configuration lives in GitHub Actions repository Variables. You should never need to open a PR or edit a source file to publish or update a post.
+1. **Content lives in repo metadata, never in source files.** Blog posts are GitHub Issues, comments are Issue comments, and configuration lives in GitHub Actions repository Variables. You should never need to open a [pull request](https://docs.github.com/en/pull-requests) (a way to propose code changes — something that normally requires developer experience) or edit a source file to publish or update a post.
 
 2. **Batteries-included from the first fork.** Cloning the repo should immediately give you a working blog. Nothing should be hard-coded to a specific user or site. No personal data, usernames, or playlist IDs should appear in committed source code.
 
@@ -38,12 +38,12 @@ SimpleGitBlog is built around a few core ideas. All contributors and agents shou
 - **Emoji reactions** — 👍 ❤️ 🎉 and other GitHub reactions are shown on posts and comments
 - **Label organisation** — apply any GitHub label to your issues; the blog generates a browsable label index automatically
 - **YouTube embeds** — playlist videos render as responsive embedded players; paste any YouTube URL on its own line in a post to auto-embed it (no API key needed)
-- **HN activity** — your Hacker News stories and comments appear automatically
-- **XSS-safe** — all user content is sanitised with `bleach` before rendering
+- **HN activity** — your [Hacker News](https://news.ycombinator.com) stories and comments appear automatically
+- **[XSS](https://owasp.org/www-community/attacks/xss/)-safe** — all user content is sanitised with `bleach` before rendering (XSS is when malicious scripts sneak in through user-submitted text)
 - **Mobile-friendly** — clean, responsive CSS with no JavaScript dependencies
 - **Block spammers** — add usernames to `config/blocked_users.txt`
 - **Cross-link forks** — commenters who have forked your repo get a "Their blog" link automatically
-- **Static & fast** — just HTML/CSS, hosted on GitHub Pages for free
+- **Static & fast** — just HTML/CSS, hosted on [GitHub Pages](https://pages.github.com) for free
 
 ---
 
@@ -51,15 +51,15 @@ SimpleGitBlog is built around a few core ideas. All contributors and agents shou
 
 ### 1. Fork this repository
 
-Click **Fork** on the GitHub repository page. Your fork becomes your personal blog.
+Click **[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo)** on the GitHub repository page. Forking creates your own personal copy of the project under your GitHub account — your copy becomes your personal blog, completely independent from the original.
 
 ### 2. Enable GitHub Pages
 
-Go to **Settings → Pages** and set the source to the `gh-pages` branch (it will be created automatically after the first build).
+Go to [**Settings → Pages → Build and deployment**](../../settings/pages) and set the source to **GitHub Actions**.
 
-### 3. Enable Actions write permissions
+### 3. Allow Actions to deploy Pages
 
-Go to **Settings → Actions → General → Workflow permissions** and select **Read and write permissions**.
+Go to [**Settings → Actions → General → Workflow permissions**](../../settings/actions) and select **Read and write permissions** (needed for the Set Up Blog workflow to create repository variables). The build workflow only requires read access — Pages deployment happens via the GitHub Pages API, not a branch push.
 
 ### 4. Configure your blog (optional)
 
@@ -67,19 +67,19 @@ Connect optional content sources — no code or API keys needed:
 
 | What to set | Where it shows up | How |
 |-------------|-------------------|-----|
-| Your **Hacker News username** | [My Reading](#my-reading--hacker-news) section | Run the **[Set Up Blog](.github/workflows/setup-blog.yml)** workflow (Actions tab → Set Up Blog → Run workflow) |
+| Your **Hacker News username** | [My Reading](#my-reading--hacker-news) section | Run the **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow ([Actions tab](../../actions) → Set Up Blog → Run workflow) |
 | Your **YouTube playlist ID(s)** | [My Watching](#my-watching--youtube-playlists) section | Same workflow, or add a `YOUTUBE_PLAYLIST_IDS` [repository variable](../../settings/variables/actions) |
 
-The **Set Up Blog** workflow saves your settings as [GitHub Actions repository Variables](../../settings/variables/actions) (Settings → Secrets and variables → Actions → Variables). Settings are stored per-fork, so they never appear in source code and forks start with a clean slate.
+The **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow saves your settings as [GitHub Actions repository Variables](../../settings/variables/actions) ([Settings → Secrets and variables → Actions → Variables](../../settings/variables/actions)). Settings are stored per-fork, so they never appear in source code and forks start with a clean slate.
 
 > **Tip:** You can skip this step entirely and come back later — the blog works out of the box with just GitHub Issues.
 
 ### 5. Publish your first post
 
-1. Open a new Issue in your forked repository.
+1. [Open a new Issue](../../issues/new) in your forked repository.
 2. Give it a descriptive **title** — this becomes your post title.
-3. Write your content in the body using Markdown.
-4. The GitHub Action will trigger automatically and rebuild your site within a minute or two.
+3. Write your content in the body using [Markdown](https://docs.github.com/en/get-started/writing-on-github) — the same text formatting syntax GitHub uses everywhere (bold, links, images, code blocks, and more).
+4. The build will trigger automatically and rebuild your site within a minute or two. You can watch it run in the [Actions tab](../../actions).
 
 That's it — no labels required. Any open issue you author is published as a blog post. If you want to organise posts by topic, add any GitHub label to the issue and the blog will generate a browsable label page for it automatically.
 
@@ -91,7 +91,7 @@ Your post will be live at `https://<your-username>.github.io/<repo-name>/`.
 
 ### My Writing — GitHub Issues
 
-Any open Issue authored by the **repository owner or a collaborator with write access** is automatically published as a blog post. No special label is required.
+Any open Issue authored by the **repository owner** or a **[collaborator with write access](../../settings/access)** is automatically published as a blog post. No special label is required.
 
 **Who can post?**
 
@@ -103,7 +103,7 @@ Any open Issue authored by the **repository owner or a collaborator with write a
 
 To block commenters, add their usernames to `config/blocked_users.txt`.
 
-**Organising posts with labels:** Add any GitHub label to an issue and the blog will automatically generate a `/labels/{label}/` page for it. Labels appear as clickable links on the index page and each post.
+**Organising posts with labels:** Add any [GitHub label](../../labels) to an issue and the blog will automatically generate a `/labels/{label}/` page for it. Labels appear as clickable links on the index page and each post.
 
 ---
 
@@ -113,7 +113,7 @@ To block commenters, add their usernames to `config/blocked_users.txt`.
 
 **Setup (recommended — keeps your playlist IDs out of source control):**
 
-Run the **Set Up Blog** workflow (Actions tab → Set Up Blog → Run workflow) and enter your playlist ID(s) in the `youtube_playlist_ids` input. Alternatively, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
+Run the **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow ([Actions tab](../../actions) → Set Up Blog → Run workflow) and enter your playlist ID(s) in the `youtube_playlist_ids` input. Alternatively, go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
 
 To find a playlist ID, open the playlist on YouTube and copy the `list=` parameter:
 ```
@@ -142,11 +142,11 @@ The video will automatically render as a responsive embedded player — no confi
 
 ### My Reading — Hacker News
 
-No API key needed — the [Algolia HN Search API](https://hn.algolia.com/api/v1) is public.
+[Hacker News](https://news.ycombinator.com) is a community site where people share and discuss technology links and ideas — think of it as a focused, text-first forum. No API key needed — the [Algolia HN Search API](https://hn.algolia.com/api/v1) is public.
 
 **Setup (recommended — keeps your username out of source control):**
 
-Run the **Set Up Blog** workflow (Actions tab → Set Up Blog → Run workflow) and enter your username in the `hn_username` input. Alternatively, go to **Settings → Secrets and variables → Actions → Variables** and add a **Variable** named `HN_USERNAME` with your HN username.
+Run the **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow ([Actions tab](../../actions) → Set Up Blog → Run workflow) and enter your username in the `hn_username` input. Alternatively, go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `HN_USERNAME` with your HN username.
 
 **Local development only:** Copy `config/hackernews.txt.example` to `config/hackernews.txt` and add your username. That file is gitignored and will never be committed.
 
@@ -156,20 +156,11 @@ Run the **Set Up Blog** workflow (Actions tab → Set Up Blog → Run workflow) 
 
 ### Custom domain
 
-Set the `cname` field in `.github/workflows/build-blog.yml`:
-
-```yaml
-- name: Deploy to GitHub Pages
-  uses: peaceiris/actions-gh-pages@v4
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    publish_dir: ./_site
-    cname: blog.example.com   # ← your domain here
-```
+Go to [**Settings → Pages → Custom domain**](../../settings/pages) and enter your domain there. GitHub will automatically create and commit a `CNAME` file to your repository. No changes to the workflow file are needed.
 
 ### Rebuild schedule
 
-The blog rebuilds every 6 hours via a cron schedule, on every Issue or comment event, and can be triggered manually from the **Actions** tab.
+The blog rebuilds every 6 hours via a cron schedule, on every Issue or comment event, and can be triggered manually from the [**Actions** tab](../../actions).
 
 ---
 
@@ -181,7 +172,9 @@ YouTube Playlists (YOUTUBE_PLAYLIST_IDS, no API key)       ├──► blog/gen
 Hacker News (HN_USERNAME) ──────────────────────────────┘
 ```
 
-Each source is handled by an *ingestor* in `blog/ingestors/`. Every ingestor produces posts in a common schema, so the site generator and templates are source-agnostic.
+**How the updates happen:** [GitHub Actions](https://docs.github.com/en/actions) is a built-in automation system that runs code on your behalf — no server required. Each time you publish a post (or every 6 hours on a timer), GitHub spins up a temporary virtual machine called a *runner*, which fetches fresh content from all your configured sources, rebuilds the entire site from scratch, and publishes the result to [GitHub Pages](https://pages.github.com). The site looks dynamic to your readers, but it's actually a folder of plain, static HTML files — fast, free to host, and with nothing to maintain. You can watch every build happen live (or browse past runs) in the [Actions tab](../../actions).
+
+Each source is handled by an *ingestor* (a small script that knows how to fetch and normalise content from one source) in `blog/ingestors/`. Every ingestor produces posts in a common format, so the site generator and templates are source-agnostic — adding a new content source is as simple as writing one new ingestor.
 
 ### Key files
 
@@ -220,6 +213,6 @@ Built with:
 - [bleach](https://bleach.readthedocs.io/)
 - [Jinja2](https://jinja.palletsprojects.com/)
 - [requests](https://requests.readthedocs.io/)
-- [peaceiris/actions-gh-pages](https://github.com/peaceiris/actions-gh-pages)
+- [actions/upload-pages-artifact](https://github.com/actions/upload-pages-artifact) + [actions/deploy-pages](https://github.com/actions/deploy-pages)
 - [Algolia HN Search API](https://hn.algolia.com/api/v1) (Hacker News)
 - [YouTube Atom/RSS feeds](https://www.youtube.com/feeds/videos.xml) (YouTube, no API key)
