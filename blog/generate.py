@@ -213,7 +213,7 @@ def generate_site(
             slug = label_slug(lbl)
             label_dir = output_dir / "labels" / slug
             label_dir.mkdir(parents=True, exist_ok=True)
-            label_html = label_tmpl.render(label_name=lbl, label_slug=slug, posts=lbl_posts)
+            label_html = label_tmpl.render(label_name=lbl, current_label_slug=slug, posts=lbl_posts)
             (label_dir / "index.html").write_text(label_html, encoding="utf-8")
             print(f"  Wrote labels/{slug}/index.html ({len(lbl_posts)} post(s))")
 
