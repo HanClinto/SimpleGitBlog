@@ -6,17 +6,13 @@ Algolia HN Search API (no authentication required).
 
 Section: "reading" (My Reading)
 
-Configuration (GitHub Actions repository settings — do NOT hardcode values):
-  Variable: HN_USERNAME    Your Hacker News username
-
-For local development, you may also place usernames in
-``config/hackernews.txt`` (one per line, # comments supported).
-That file is gitignored so your personal username stays off of version control.
+Configuration (GitHub Actions repository variable — Settings → Variables):
+  HN_USERNAME    Your Hacker News username
 """
 
+import html as _html
 import re
 import urllib.parse
-from pathlib import Path
 
 import requests
 
@@ -24,7 +20,6 @@ from blog.utils import extract_excerpt, format_date, format_datetime, sanitize_h
 
 _HN_ALGOLIA_BASE = "https://hn.algolia.com/api/v1"
 _HN_ITEM_BASE = "https://news.ycombinator.com/item"
-_CONFIG_FILE = "hackernews.txt"
 _MAX_HITS_PER_TYPE = 20
 
 
@@ -32,29 +27,15 @@ _MAX_HITS_PER_TYPE = 20
 # Configuration helpers
 # ---------------------------------------------------------------------------
 
-def load_usernames(config_dir: Path, env_username: str | None = None) -> list[str]:
+def load_usernames(env_username: str | None = None) -> list[str]:
     """
-    Return a deduplicated list of HN usernames from two sources:
-
-    1. ``env_username`` — the value of the HN_USERNAME env var.
-       This is the recommended approach for deployed sites.
-    2. ``config/hackernews.txt`` — optional local-dev override file
-       (gitignored; never committed with real usernames).
-
-    Keeping usernames out of committed files ensures forks of this blog
-    don't inadvertently display the original owner's HN activity.
+    Return a deduplicated list of HN usernames from the HN_USERNAME
+    repository variable.  Set it under Settings → Variables in GitHub Actions.
     """
     usernames: set[str] = set()
 
     if env_username:
         usernames.add(env_username.strip())
-
-    config_file = config_dir / _CONFIG_FILE
-    if config_file.exists():
-        for line in config_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                usernames.add(line)
 
     return sorted(usernames)
 
@@ -139,7 +120,13 @@ def _process_story(hit: dict) -> dict | None:
     )
     body_html = "\n".join(body_parts)
 
-    excerpt = extract_excerpt(story_text) if story_text else title
+    if story_text:
+        plain_story = re.sub(r"<[^>]+>", " ", story_text)
+        plain_story = _html.unescape(plain_story)
+        plain_story = " ".join(plain_story.split())
+        excerpt = extract_excerpt(plain_story)
+    else:
+        excerpt = title
     post_id = f"hn-{object_id}"
 
     return {
@@ -199,8 +186,9 @@ def _process_comment(hit: dict) -> dict | None:
     )
     body_html = "\n".join(body_parts)
 
-    # Plain-text excerpt: strip HTML tags from comment_text
+    # Plain-text excerpt: strip HTML tags and decode entities from comment_text
     plain = re.sub(r"<[^>]+>", " ", comment_text)
+    plain = _html.unescape(plain)
     plain = " ".join(plain.split())
     excerpt = extract_excerpt(plain)
 

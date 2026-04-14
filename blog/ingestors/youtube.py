@@ -12,28 +12,20 @@ Each feed returns up to the 15 most-recently-added videos.
 
 Section: "watching" (My Watching)
 
-Configuration (GitHub Actions repository settings — do NOT hardcode values):
-  Variable: YOUTUBE_PLAYLIST_IDS     Comma-separated playlist IDs
-  Variable: YOUTUBE_CHANNEL_IDS      Comma-separated channel IDs (UCxxxxxx)
-                                     or channel handles (@username) — handles
-                                     are resolved automatically.
-
-For local development, you may also place IDs in:
-  ``config/youtube_playlists.txt``  (one playlist ID per line)
-  ``config/youtube_channels.txt``   (one channel ID or @handle per line)
-Both files are gitignored so your personal IDs stay off of version control.
+Configuration (GitHub Actions repository variables — Settings → Variables):
+  YOUTUBE_PLAYLIST_IDS     One playlist ID per line (multi-line variable)
+  YOUTUBE_CHANNEL_IDS      One channel ID or @handle per line
+                           (UCxxxxxx or @username) — handles are resolved
+                           automatically.
 """
 
 import re
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 import requests
 
 from blog.utils import extract_excerpt, format_date, format_datetime, plain_text_to_html
 
-_PLAYLIST_CONFIG_FILE = "youtube_playlists.txt"
-_CHANNEL_CONFIG_FILE = "youtube_channels.txt"
 _RSS_BASE = "https://www.youtube.com/feeds/videos.xml"
 
 # XML namespace map for YouTube Atom feeds
@@ -48,56 +40,34 @@ _NS = {
 # Configuration helpers
 # ---------------------------------------------------------------------------
 
-def load_playlist_ids(config_dir: Path, env_playlist_ids: str | None = None) -> list[str]:
+def load_playlist_ids(env_playlist_ids: str | None = None) -> list[str]:
     """
-    Return a deduplicated list of YouTube playlist IDs from two sources:
-
-    1. ``env_playlist_ids`` — the value of the YOUTUBE_PLAYLIST_IDS env var
-       (comma-separated). This is the recommended approach for deployed sites.
-    2. ``config/youtube_playlists.txt`` — optional local-dev override file
-       (gitignored; never committed with real IDs).
+    Return a deduplicated list of YouTube playlist IDs from the
+    YOUTUBE_PLAYLIST_IDS repository variable (one ID per line).
     """
     ids: set[str] = set()
 
     if env_playlist_ids:
-        for pid in env_playlist_ids.split(","):
+        for pid in re.split(r'[\r\n,]+', env_playlist_ids):
             pid = pid.strip()
             if pid:
                 ids.add(pid)
 
-    config_file = config_dir / _PLAYLIST_CONFIG_FILE
-    if config_file.exists():
-        for line in config_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                ids.add(line)
-
     return sorted(ids)
 
 
-def load_channel_ids(config_dir: Path, env_channel_ids: str | None = None) -> list[str]:
+def load_channel_ids(env_channel_ids: str | None = None) -> list[str]:
     """
-    Return a deduplicated list of YouTube channel IDs (or @handles) from two sources:
-
-    1. ``env_channel_ids`` — the value of the YOUTUBE_CHANNEL_IDS env var
-       (comma-separated). Accepts ``UCxxxxxx`` channel IDs or ``@handle`` forms.
-    2. ``config/youtube_channels.txt`` — optional local-dev override file
-       (gitignored; never committed with real IDs).
+    Return a deduplicated list of YouTube channel IDs (or @handles) from the
+    YOUTUBE_CHANNEL_IDS repository variable (one ID or handle per line).
     """
     ids: set[str] = set()
 
     if env_channel_ids:
-        for cid in env_channel_ids.split(","):
+        for cid in re.split(r'[\r\n,]+', env_channel_ids):
             cid = cid.strip()
             if cid:
                 ids.add(cid)
-
-    config_file = config_dir / _CHANNEL_CONFIG_FILE
-    if config_file.exists():
-        for line in config_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                ids.add(line)
 
     return sorted(ids)
 
@@ -280,7 +250,6 @@ def _process_entry(entry: dict, source_type: str, source_id: str, view_more_url:
 # ---------------------------------------------------------------------------
 
 def ingest(
-    config_dir: Path,
     env_playlist_ids: str | None = None,
     env_channel_ids: str | None = None,
 ) -> list[dict]:
@@ -288,14 +257,11 @@ def ingest(
     Fetch YouTube playlist and channel videos via public RSS feeds and return
     posts in the common schema.  No API key required.
 
-    Playlist IDs come from ``env_playlist_ids`` (YOUTUBE_PLAYLIST_IDS env var)
-    and/or the local ``config/youtube_playlists.txt`` file.
-
-    Channel IDs/handles come from ``env_channel_ids`` (YOUTUBE_CHANNEL_IDS env
-    var) and/or the local ``config/youtube_channels.txt`` file.
+    Playlist IDs come from the YOUTUBE_PLAYLIST_IDS repository variable.
+    Channel IDs/handles come from the YOUTUBE_CHANNEL_IDS repository variable.
     """
-    playlist_ids = load_playlist_ids(config_dir, env_playlist_ids)
-    channel_ids_raw = load_channel_ids(config_dir, env_channel_ids)
+    playlist_ids = load_playlist_ids(env_playlist_ids)
+    channel_ids_raw = load_channel_ids(env_channel_ids)
 
     if not playlist_ids and not channel_ids_raw:
         print("  No YouTube playlist IDs or channel IDs configured.")

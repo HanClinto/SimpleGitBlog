@@ -14,7 +14,7 @@ Environment variables:
 
     YOUTUBE_API_KEY      Removed — no longer needed! The YouTube ingestor now uses
                          YouTube's public Atom/RSS feeds (no key required).
-    YOUTUBE_PLAYLIST_IDS Optional. Comma-separated YouTube playlist IDs.
+    YOUTUBE_PLAYLIST_IDS Optional. YouTube playlist IDs, one per line.
                          Set this as a GitHub Actions repository variable
                          (Settings → Variables) so it is NOT stored in source.
 
@@ -59,9 +59,10 @@ CONFIG_DIR = SCRIPT_DIR.parent / "config"
 # ---------------------------------------------------------------------------
 
 _SECTION_DEFS = [
-    {"key": "writing",    "title": "My Writing",  "icon": "✍️"},
-    {"key": "watching",   "title": "My Watching", "icon": "📺"},
-    {"key": "reading",    "title": "My Reading",  "icon": "📰"},
+    {"key": "writing", "title": "My Writing",  "icon": "✍️"},
+    {"key": "videos",   "title": "My Videos",   "icon": "🎥"},
+    {"key": "watching", "title": "My Watching", "icon": "📺"},
+    {"key": "reading",  "title": "My Reading",  "icon": "📰"},
 ]
 
 # ---------------------------------------------------------------------------
@@ -136,8 +137,8 @@ def generate_site(
 
     # --- YouTube playlists & channels (My Watching) — uses free public RSS feeds, no API key ---
     watching_posts: list[dict] = []
-    playlist_ids = youtube.load_playlist_ids(CONFIG_DIR, youtube_playlist_ids)
-    channel_ids = youtube.load_channel_ids(CONFIG_DIR, youtube_channel_ids)
+    playlist_ids = youtube.load_playlist_ids(youtube_playlist_ids)
+    channel_ids = youtube.load_channel_ids(youtube_channel_ids)
 
     # Auto-discover YouTube channel from GitHub social links when not explicitly configured
     profile_youtube_handles: list[str] = []
@@ -152,14 +153,18 @@ def generate_site(
     if auto_discovered_channels and not channel_ids:
         print(f"  Auto-discovered YouTube channel(s) from GitHub profile: {auto_discovered_channels}")
         effective_channel_ids_str = ",".join(auto_discovered_channels)
-        channel_ids = youtube.load_channel_ids(CONFIG_DIR, effective_channel_ids_str)
+        channel_ids = youtube.load_channel_ids(effective_channel_ids_str)
 
     if playlist_ids or channel_ids:
         print("Fetching YouTube content (My Watching)…")
-        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids, effective_channel_ids_str)
+        watching_posts = youtube.ingest(youtube_playlist_ids, effective_channel_ids_str)
         print(f"  {len(watching_posts)} post(s) ingested from YouTube.")
     else:
         print("YOUTUBE_PLAYLIST_IDS / YOUTUBE_CHANNEL_IDS not configured and none found in GitHub profile — skipping YouTube ingestor.")
+
+    # Split YouTube: channel posts → "My Videos" main section; playlist posts → sidebar panels
+    channel_posts = [p for p in watching_posts if p.get("metadata", {}).get("source_type") == "channel"]
+    playlist_posts = [p for p in watching_posts if p.get("metadata", {}).get("source_type") == "playlist"]
 
     # --- Hacker News (My Reading) — HN_USERNAME env var, or auto-discovered from GitHub profile ---
     reading_posts: list[dict] = []
@@ -183,9 +188,10 @@ def generate_site(
 
     # Build active sections (skip sections that produced no posts)
     section_posts = {
-        "writing":  writing_posts,
-        "watching": watching_posts,
-        "reading":  reading_posts,
+        "writing": writing_posts,
+        "videos":  channel_posts,
+        "watching": playlist_posts,
+        "reading": reading_posts,
     }
     active_sections = [
         {**defn, "posts": section_posts[defn["key"]]}
@@ -195,7 +201,7 @@ def generate_site(
 
     # All posts merged and sorted newest-first (for combined feed / post pages)
     all_posts = sorted(
-        writing_posts + watching_posts + reading_posts,
+        writing_posts + channel_posts + playlist_posts + reading_posts,
         key=lambda p: p["created_at"],
         reverse=True,
     )
@@ -217,25 +223,30 @@ def generate_site(
         f"https://news.ycombinator.com/user?id={_hn_user}" if _hn_user else None
     )
 
-    # Collect unique YouTube "view more" URLs (one per playlist/channel)
-    seen_view_more: set[str] = set()
-    youtube_view_more_urls: list[dict] = []
-    for p in watching_posts:
-        vmu = p.get("metadata", {}).get("view_more_url")
-        stype = p.get("metadata", {}).get("source_type", "playlist")
-        if vmu and vmu not in seen_view_more:
-            seen_view_more.add(vmu)
-            youtube_view_more_urls.append({"url": vmu, "source_type": stype})
+    # Build per-playlist sidebar panels (up to _SIDEBAR_LIMIT videos each, in playlist order)
+    playlist_groups: list[dict] = []
+    _seen_pids: dict[str, dict] = {}
+    for p in playlist_posts:
+        src_id = p.get("metadata", {}).get("source_id", "")
+        if src_id not in _seen_pids:
+            grp: dict = {
+                "source_id": src_id,
+                "view_more_url": p.get("metadata", {}).get("view_more_url", ""),
+                "posts": [],
+            }
+            playlist_groups.append(grp)
+            _seen_pids[src_id] = grp
+        if len(_seen_pids[src_id]["posts"]) < _SIDEBAR_LIMIT:
+            _seen_pids[src_id]["posts"].append(p)
 
     sidebar = {
-        "hn_stories":       hn_stories[:_SIDEBAR_LIMIT],
-        "hn_comments":      hn_comments[:_SIDEBAR_LIMIT],
+        "hn_stories":      hn_stories[:_SIDEBAR_LIMIT],
+        "hn_comments":     hn_comments[:_SIDEBAR_LIMIT],
         "hn_submitted_url": hn_submitted_url,
-        "hn_threads_url":   hn_threads_url,
-        "hn_profile_url":   hn_profile_url,
-        "hn_username":      _hn_user,
-        "watching":         watching_posts[:_SIDEBAR_LIMIT],
-        "youtube_view_more_urls": youtube_view_more_urls,
+        "hn_threads_url":  hn_threads_url,
+        "hn_profile_url":  hn_profile_url,
+        "hn_username":     _hn_user,
+        "playlist_groups": playlist_groups,
     }
 
     # --- Jinja2 setup ---
@@ -257,6 +268,7 @@ def generate_site(
     env.globals["base_path"] = base_path
     env.globals["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     env.globals["generated_in"] = f"{time.monotonic() - _start:.1f}s"
+    env.globals["has_social_links"] = bool(owner_profile and owner_profile.social_links)
 
     # Pipeline run URL — available when running inside GitHub Actions
     run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
@@ -264,9 +276,6 @@ def generate_site(
         env.globals["pipeline_url"] = f"https://github.com/{repo}/actions/runs/{run_id}"
     else:
         env.globals["pipeline_url"] = f"https://github.com/{repo}/actions"
-
-    # First-time setup detection — set by the "Set Up Blog" workflow
-    env.globals["blog_configured"] = bool(os.environ.get("BLOG_CONFIGURED", "").strip())
 
     # Pre-compute labels so templates can link to /labels/{slug}/ pages
     label_map: dict[str, list[dict]] = {}
@@ -323,7 +332,8 @@ def generate_site(
         "hidden_labels": sorted(hidden_labels),
         "blocked_user_count": len(blocked_users),
         "writing_post_count": len(writing_posts),
-        "watching_post_count": len(watching_posts),
+        "video_post_count": len(channel_posts),
+        "playlist_post_count": len(playlist_posts),
         "reading_post_count": len(reading_posts),
     }
     config_tmpl = env.get_template("config.html")
@@ -358,7 +368,7 @@ def main() -> None:
     youtube_channel_ids = os.environ.get("YOUTUBE_CHANNEL_IDS") or None
 
     # HN usernames: from HN_USERNAME env var and/or local config file (gitignored)
-    hn_usernames = hackernews.load_usernames(CONFIG_DIR, os.environ.get("HN_USERNAME") or None)
+    hn_usernames = hackernews.load_usernames(os.environ.get("HN_USERNAME") or None)
 
     generate_site(
         repo=repo,

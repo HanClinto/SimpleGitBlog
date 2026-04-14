@@ -9,14 +9,12 @@
 
 <h1 class="page-heading">🔧 Blog Configuration</h1>
 
-{% if not blog_configured %}
+{% if not owner_profile or not owner_profile.social_links %}
 <div class="config-alert config-alert--warning">
-  <strong>⚠️ First-time setup not yet run.</strong>
-  The &ldquo;Set Up Blog&rdquo; workflow hasn&rsquo;t been run yet. Optional integrations
-  (YouTube, Hacker News) may not be configured.
-  <a href="{{ repo_url }}/actions/workflows/setup-blog.yml" target="_blank" rel="noopener noreferrer">
-    Run it now &rarr;
-  </a>
+  <strong>⚠️ No social accounts linked on your GitHub profile.</strong>
+  Content auto-discovery (YouTube, Hacker News) relies on your linked social accounts.
+  Add them under <strong>Social accounts</strong> on your
+  <a href="https://github.com/settings/profile" target="_blank" rel="noopener noreferrer">GitHub profile settings</a>.
 </div>
 {% endif %}
 
@@ -53,7 +51,13 @@
     <tbody>
       {% for link in owner_profile.social_links %}
       <tr>
-        <td><strong>{{ link.provider | capitalize }}</strong></td>
+        <td><strong>
+          {% if 'ycombinator.com' in link.url %}
+            Hacker News
+          {% else %}
+            {{ link.provider | replace('-', ' ') | title }}
+          {% endif %}
+        </strong></td>
         <td>
           <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer nofollow" class="config-detail">
             {{ link.url }}
@@ -66,7 +70,7 @@
             {% else %}
             <span class="config-status config-status--off">Overridden by YOUTUBE_CHANNEL_IDS</span>
             {% endif %}
-          {% elif link.provider in ('hackernews', 'hacker-news', 'hn') %}
+          {% elif link.provider in ('hackernews', 'hacker-news', 'hn') or 'ycombinator.com' in link.url %}
             {% if auto_discovered_hn_username %}
             <span class="config-status config-status--ok">✅ Auto-discovered — My Reading</span>
             {% else %}
@@ -121,28 +125,48 @@
       </tr>
       <tr>
         <td>
-          <strong>📺 YouTube</strong>
-          {% if playlist_ids %}
-          <br><span class="config-detail">{{ playlist_ids | length }} playlist{{ 's' if playlist_ids | length != 1 else '' }}</span>
-          {% endif %}
+          <strong>🎬 My Channel</strong>
           {% if channel_ids %}
           <br>
           {% if auto_discovered_channels %}
-          <span class="config-detail config-status--ok">{{ channel_ids | length }} channel{{ 's' if channel_ids | length != 1 else '' }} (auto-discovered from GitHub profile)</span>
+          <span class="config-detail config-status--ok">auto-discovered from GitHub profile</span>
           {% else %}
-          <span class="config-detail">{{ channel_ids | length }} channel{{ 's' if channel_ids | length != 1 else '' }}</span>
+          <span class="config-detail">(via <code>YOUTUBE_CHANNEL_IDS</code>)</span>
           {% endif %}
           {% endif %}
         </td>
-        <td>My Watching</td>
+        <td>My Videos</td>
         <td>
-          {% if playlist_ids or channel_ids %}
+          {% if channel_ids %}
           <span class="config-status config-status--ok">✅ Configured</span>
           {% else %}
-          <span class="config-status config-status--off">— Not configured</span>
+          <span class="config-status config-status--off">— Set
+            <a href="{{ repo_url }}/settings/variables/actions" target="_blank" rel="noopener noreferrer"><code>YOUTUBE_CHANNEL_IDS</code></a>
+          </span>
           {% endif %}
         </td>
-        <td>{{ watching_post_count }}</td>
+        <td>{{ video_post_count }}</td>
+      </tr>
+      <tr>
+        <td>
+          <strong>📺 Playlists</strong>
+          {% if playlist_ids %}
+          <br>
+          {% for pid in playlist_ids %}<span class="config-detail"><a href="https://www.youtube.com/playlist?list={{ pid }}" target="_blank" rel="noopener noreferrer">{{ pid }}</a></span>{% if not loop.last %}, {% endif %}{% endfor %}
+          <span class="config-detail">(via <code>YOUTUBE_PLAYLIST_IDS</code>)</span>
+          {% endif %}
+        </td>
+        <td>My Watching <span class="config-detail">(sidebar)</span></td>
+        <td>
+          {% if playlist_ids %}
+          <span class="config-status config-status--ok">✅ Configured</span>
+          {% else %}
+          <span class="config-status config-status--off">— Set
+            <a href="{{ repo_url }}/settings/variables/actions" target="_blank" rel="noopener noreferrer"><code>YOUTUBE_PLAYLIST_IDS</code></a>
+          </span>
+          {% endif %}
+        </td>
+        <td>{{ playlist_post_count }}</td>
       </tr>
       <tr>
         <td>
@@ -166,7 +190,9 @@
           {% if hn_usernames %}
           <span class="config-status config-status--ok">✅ Configured</span>
           {% else %}
-          <span class="config-status config-status--off">— Not configured</span>
+          <span class="config-status config-status--off">— Set
+            <a href="{{ repo_url }}/settings/variables/actions" target="_blank" rel="noopener noreferrer"><code>HN_USERNAME</code></a>
+          </span>
           {% endif %}
         </td>
         <td>{{ reading_post_count }}</td>
@@ -194,7 +220,7 @@
       <em>None configured — all issues from allowed authors are published.</em>
       {% endif %}
       <p class="config-hint">
-        Edit <code>config/hidden_labels.txt</code> in the repository to add or remove labels.
+        Edit <a href="{{ repo_url }}/edit/main/config/hidden_labels.txt" target="_blank" rel="noopener noreferrer"><code>config/hidden_labels.txt</code></a> in the repository to add or remove labels.
       </p>
     </dd>
 
@@ -207,7 +233,7 @@
       <em>None — no commenters are currently blocked.</em>
       {% endif %}
       <p class="config-hint">
-        Edit <code>config/blocked_users.txt</code> in the repository to manage the block list.
+        Edit <a href="{{ repo_url }}/edit/main/config/blocked_users.txt" target="_blank" rel="noopener noreferrer"><code>config/blocked_users.txt</code></a> in the repository to manage the block list.
       </p>
     </dd>
   </dl>
@@ -227,40 +253,6 @@
       <a href="{{ pipeline_url }}" target="_blank" rel="noopener noreferrer">{{ generated_at }}</a>
       (in {{ generated_in }})
     </dd>
-
-    <dt>Setup status</dt>
-    <dd>
-      {% if blog_configured %}
-      <span class="config-status config-status--ok">✅ Set Up Blog workflow has been run</span>
-      {% else %}
-      <span class="config-status config-status--warn">⚠️ Set Up Blog workflow has not been run yet</span>
-      {% endif %}
-    </dd>
   </dl>
-</section>
-
-{# ------------------------------------------------------------------ #}
-{# Actions                                                              #}
-{# ------------------------------------------------------------------ #}
-<section class="config-section config-section--actions">
-  <h2 class="config-section__heading">⚙️ Actions</h2>
-  <p>Use the <strong>Set Up Blog</strong> workflow to configure or update optional integrations
-     (YouTube playlists, Hacker News username) without editing any source files.</p>
-  <a
-    href="{{ repo_url }}/actions/workflows/setup-blog.yml"
-    class="btn btn--primary"
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    ▶ Run Set Up Blog workflow
-  </a>
-  <a
-    href="{{ pipeline_url }}"
-    class="btn btn--secondary btn--spaced"
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    📋 View pipeline runs
-  </a>
 </section>
 {% endblock %}

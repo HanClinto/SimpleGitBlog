@@ -15,12 +15,12 @@
         <a href="{{ base_path }}">Home</a>
         <a href="{{ base_path }}config/">Config</a>
         <a href="{{ repo_url }}" target="_blank" rel="noopener noreferrer">GitHub</a>
-        {% if not blog_configured %}
+        {% if not has_social_links %}
         <a
           href="{{ base_path }}config/"
           class="setup-warning"
-          title="This blog hasn't been set up yet. Click to view configuration and run the Set Up Blog workflow."
-        >⚠️ Set up blog</a>
+          title="No social accounts linked on your GitHub profile. Click for configuration details."
+        >⚠️</a>
         {% endif %}
       </nav>
     </div>

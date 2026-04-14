@@ -49,6 +49,63 @@
     </article>
     {% endfor %}
   </section>
+  {% elif section.key == 'videos' %}
+  <section class="blog-section" id="section-{{ section.key }}">
+    <h2 class="section-heading">
+      <span class="section-icon" aria-hidden="true">{{ section.icon }}</span>
+      {{ section.title }}
+    </h2>
+    {% for post in section.posts %}
+    <article class="post-card post-card--youtube">
+      <h3 class="post-card__title">
+        <a href="{{ post.post_url }}">{{ post.title }}</a>
+      </h3>
+      <div class="post-card__meta">
+        {% if post.avatar_url %}
+        <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
+          <img class="avatar avatar--video-thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="120" height="68" loading="lazy" />
+        </a>
+        {% endif %}
+        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        &mdash;
+        <span class="source-badge source-badge--youtube">youtube</span>
+      </div>
+      {% if post.excerpt %}
+      <p class="post-card__excerpt">{{ post.excerpt }}</p>
+      {% endif %}
+      <a class="post-card__read-more" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">Watch on YouTube &rarr;</a>
+    </article>
+    {% endfor %}
+  </section>
+  {% elif section.key == 'watching' %}
+  <section class="blog-section" id="section-{{ section.key }}">
+    <h2 class="section-heading">
+      <span class="section-icon" aria-hidden="true">{{ section.icon }}</span>
+      {{ section.title }}
+    </h2>
+    {% for post in section.posts %}
+    <article class="post-card post-card--youtube">
+      <h3 class="post-card__title">
+        <a href="{{ post.post_url }}">{{ post.title }}</a>
+      </h3>
+      <div class="post-card__meta">
+        {% if post.avatar_url %}
+        <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
+          <img class="avatar avatar--video-thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="120" height="68" loading="lazy" />
+        </a>
+        {% endif %}
+        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        &mdash; {{ post.metadata.channel_name }}
+        &mdash;
+        <span class="source-badge source-badge--youtube">youtube</span>
+      </div>
+      {% if post.excerpt %}
+      <p class="post-card__excerpt">{{ post.excerpt }}</p>
+      {% endif %}
+      <a class="post-card__read-more" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">Watch on YouTube &rarr;</a>
+    </article>
+    {% endfor %}
+  </section>
   {% endif %}
   {% endfor %}
 {% else %}
@@ -83,7 +140,7 @@
 </div>{# /main-column #}
 
 {# ====== SIDEBAR — HN + YouTube ====== #}
-{% if sidebar.hn_stories or sidebar.hn_comments or sidebar.watching %}
+{% if sidebar.hn_stories or sidebar.hn_comments or sidebar.playlist_groups %}
 <aside class="page-sidebar">
 
 {# --- Hacker News Submissions --- #}
@@ -140,14 +197,14 @@
 </section>
 {% endif %}
 
-{# --- YouTube Videos --- #}
-{% if sidebar.watching %}
-<section class="sidebar-section" id="sidebar-youtube">
+{# --- YouTube Playlists (one panel per playlist) --- #}
+{% for grp in sidebar.playlist_groups %}
+<section class="sidebar-section" id="sidebar-playlist-{{ loop.index }}">
   <h2 class="sidebar-section__heading">
     <span aria-hidden="true">📺</span> My Watching
   </h2>
   <ul class="sidebar-list sidebar-list--videos">
-    {% for post in sidebar.watching %}
+    {% for post in grp.posts %}
     <li class="sidebar-item sidebar-item--video">
       {% if post.avatar_url %}
       <a class="sidebar-item__thumb-link" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
@@ -158,23 +215,18 @@
         <a class="sidebar-item__title" href="{{ post.post_url }}">{{ post.title }}</a>
         <div class="sidebar-item__meta">
           <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
-          {% if post.metadata.source_type == 'channel' %}&middot; <span class="source-badge source-badge--youtube">my channel</span>{% endif %}
         </div>
       </div>
     </li>
     {% endfor %}
   </ul>
-  {% if sidebar.youtube_view_more_urls %}
-  <div class="sidebar-section__view-more-links">
-    {% for vmu in sidebar.youtube_view_more_urls %}
-    <a class="sidebar-section__view-all" href="{{ vmu.url }}" target="_blank" rel="noopener noreferrer nofollow">
-      {% if vmu.source_type == 'channel' %}View my channel on YouTube &rarr;{% else %}View full playlist on YouTube &rarr;{% endif %}
-    </a>
-    {% endfor %}
-  </div>
+  {% if grp.view_more_url %}
+  <a class="sidebar-section__view-all" href="{{ grp.view_more_url }}" target="_blank" rel="noopener noreferrer nofollow">
+    View full playlist on YouTube &rarr;
+  </a>
   {% endif %}
 </section>
-{% endif %}
+{% endfor %}
 
 </aside>{# /page-sidebar #}
 {% endif %}

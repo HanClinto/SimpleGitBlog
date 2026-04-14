@@ -114,7 +114,7 @@ To block commenters, add their usernames to `config/blocked_users.txt`.
 
 **Setup (recommended — keeps your playlist IDs out of source control):**
 
-Run the **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow ([Actions tab](../../actions) → Set Up Blog → Run workflow) and enter your playlist ID(s) in the `youtube_playlist_ids` input. Alternatively, go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `YOUTUBE_PLAYLIST_IDS` with your playlist ID(s), comma-separated.
+Go to [**Settings → Secrets and variables → Actions → Variables**](../../settings/variables/actions) and add a **Variable** named `YOUTUBE_PLAYLIST_IDS`. GitHub's variable editor supports multi-line values — add one playlist ID per line.
 
 To find a playlist ID, open the playlist on YouTube and copy the `list=` parameter:
 ```
