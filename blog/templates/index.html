@@ -129,10 +129,7 @@
     {% for post in panel.posts %}
     <li class="sidebar-item">
       <a class="sidebar-item__title" href="{{ post.metadata.story_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.story_title }}</a>
-      <div class="sidebar-item__meta">
-        <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow"><time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time></a>
-      </div>
-      {% if post.excerpt %}<p class="sidebar-item__excerpt">{{ post.excerpt }}</p>{% endif %}
+      {% if post.excerpt %}<a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow" title="{{ post.created_at_fmt }}"><p class="sidebar-item__excerpt">{{ post.excerpt }}</p></a>{% endif %}
     </li>
     {% endfor %}
   </ul>
