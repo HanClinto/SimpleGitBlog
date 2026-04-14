@@ -11,15 +11,18 @@ on:
   workflow_dispatch:  # manual trigger
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -58,10 +61,10 @@ jobs:
           HN_USERNAME: ${{ vars.HN_USERNAME }}
           # Set by the "Set Up Blog" workflow. Controls the first-time setup warning.
           BLOG_CONFIGURED: ${{ vars.BLOG_CONFIGURED }}
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_site
-          # Uncomment and set cname if you have a custom domain:
-          # cname: blog.example.com
+          path: ./_site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
