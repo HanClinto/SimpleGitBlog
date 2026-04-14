@@ -66,6 +66,12 @@
             {% else %}
             <span class="config-status config-status--off">Overridden by YOUTUBE_CHANNEL_IDS</span>
             {% endif %}
+          {% elif link.provider in ('hackernews', 'hacker-news', 'hn') %}
+            {% if auto_discovered_hn_username %}
+            <span class="config-status config-status--ok">✅ Auto-discovered — My Reading</span>
+            {% else %}
+            <span class="config-status config-status--off">Overridden by HN_USERNAME</span>
+            {% endif %}
           {% elif link.provider in ('twitter', 'x') %}
           <span class="config-status config-status--off">— Displayed (future integration)</span>
           {% elif link.provider == 'linkedin' %}
@@ -142,10 +148,16 @@
         <td>
           <strong>📰 Hacker News</strong>
           {% if hn_usernames %}
-          <br><span class="config-detail">
+          <br>
+          {% if auto_discovered_hn_username %}
+          <span class="config-detail config-status--ok">
+          {% else %}
+          <span class="config-detail">
+          {% endif %}
             {% for u in hn_usernames %}
             <a href="https://news.ycombinator.com/user?id={{ u }}" target="_blank" rel="noopener noreferrer">{{ u }}</a>{% if not loop.last %}, {% endif %}
             {% endfor %}
+            {% if auto_discovered_hn_username %}(auto-discovered from GitHub profile){% endif %}
           </span>
           {% endif %}
         </td>

@@ -3,7 +3,8 @@ GitHub profile helper for SimpleGitBlog.
 
 Fetches the repository owner's public GitHub profile and linked social accounts
 via the GitHub REST API.  Social links are used to auto-discover optional
-integrations (e.g. YouTube channel) when explicit configuration is absent.
+integrations (YouTube channel, Hacker News username, etc.) when explicit
+configuration is absent.
 
 The social-accounts endpoint is public — no authentication required — though
 a token raises the rate limit from 60 to 5 000 req/hour.
@@ -12,11 +13,15 @@ Endpoints used:
   GET /users/{username}               → name, bio, avatar, website, twitter_username
   GET /users/{username}/social_accounts → [{provider, url}, …]
 
-Recognised social providers (non-exhaustive):
-  youtube   → https://www.youtube.com/@handle  or  /channel/UCxx
-  twitter   → https://twitter.com/handle  /  https://x.com/handle
-  linkedin  → https://www.linkedin.com/in/slug
-  twitch    → https://www.twitch.tv/handle
+Recognised social providers and how they are used:
+  hackernews → https://news.ycombinator.com/user?id=username
+               Auto-discovers HN_USERNAME when env var not set.
+  youtube    → https://www.youtube.com/@handle  or  /channel/UCxx
+               Auto-discovers YOUTUBE_CHANNEL_IDS when env var not set.
+  twitter    → https://twitter.com/handle  /  https://x.com/handle
+               Displayed on config page (future integration).
+  linkedin   → https://www.linkedin.com/in/slug
+               Displayed on config page (future integration).
 
 Social links are exposed on the config/transparency page so visitors can see
 exactly where content is pulled from.
@@ -25,6 +30,7 @@ exactly where content is pulled from.
 from __future__ import annotations
 
 import re
+import urllib.parse
 from typing import NamedTuple
 
 import requests
@@ -163,4 +169,40 @@ def extract_linkedin_url(social_links: list[SocialLink]) -> str | None:
     for link in social_links:
         if link.provider == "linkedin":
             return link.url
+    return None
+
+
+def extract_hn_username(social_links: list[SocialLink]) -> str | None:
+    """
+    Return the Hacker News username found in the owner's social links, or None.
+
+    GitHub stores HN accounts with provider ``"hackernews"`` (sometimes
+    ``"hacker-news"`` in older entries) and URLs of the form:
+      https://news.ycombinator.com/user?id=username
+
+    The username is extracted from the ``id`` query parameter.
+    """
+    _HN_PROVIDERS = {"hackernews", "hacker-news", "hn"}
+
+    for link in social_links:
+        if link.provider.lower() in _HN_PROVIDERS:
+            # Extract username from ?id= query param
+            parsed = urllib.parse.urlparse(link.url)
+            params = urllib.parse.parse_qs(parsed.query)
+            ids = params.get("id", [])
+            if ids and ids[0].strip():
+                return ids[0].strip()
+            # Fallback: bare username in path (e.g. news.ycombinator.com/~username)
+            path_m = re.search(r'/~?([A-Za-z0-9_-]+)$', parsed.path)
+            if path_m:
+                return path_m.group(1)
+
+        # Provider-agnostic fallback: match any HN user URL regardless of provider label
+        if re.match(r'https?://news\.ycombinator\.com/user', link.url, re.IGNORECASE):
+            parsed = urllib.parse.urlparse(link.url)
+            params = urllib.parse.parse_qs(parsed.query)
+            ids = params.get("id", [])
+            if ids and ids[0].strip():
+                return ids[0].strip()
+
     return None

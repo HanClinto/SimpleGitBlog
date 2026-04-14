@@ -161,15 +161,25 @@ def generate_site(
     else:
         print("YOUTUBE_PLAYLIST_IDS / YOUTUBE_CHANNEL_IDS not configured and none found in GitHub profile — skipping YouTube ingestor.")
 
-    # --- Hacker News (My Reading) — requires HN_USERNAME ---
+    # --- Hacker News (My Reading) — HN_USERNAME env var, or auto-discovered from GitHub profile ---
     reading_posts: list[dict] = []
-    if hn_usernames:
-        names_str = ", ".join(hn_usernames)
+    auto_discovered_hn_username: str | None = None
+    effective_hn_usernames = hn_usernames  # start with whatever was explicitly configured
+
+    if not effective_hn_usernames and owner_profile:
+        discovered = github_profile.extract_hn_username(owner_profile.social_links)
+        if discovered:
+            auto_discovered_hn_username = discovered
+            effective_hn_usernames = [discovered]
+            print(f"  Auto-discovered HN username from GitHub profile: {discovered}")
+
+    if effective_hn_usernames:
+        names_str = ", ".join(effective_hn_usernames)
         print(f"Fetching Hacker News (My Reading) for: {names_str}…")
-        reading_posts = hackernews.ingest(hn_usernames)
+        reading_posts = hackernews.ingest(effective_hn_usernames)
         print(f"  {len(reading_posts)} post(s) ingested from Hacker News.")
     else:
-        print("HN_USERNAME not configured — skipping Hacker News ingestor.")
+        print("HN_USERNAME not configured and none found in GitHub profile — skipping Hacker News ingestor.")
 
     # Build active sections (skip sections that produced no posts)
     section_posts = {
@@ -195,8 +205,8 @@ def generate_site(
     _SIDEBAR_LIMIT = 5
     hn_stories = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
     hn_comments = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "comment"]
-    # Build per-username HN profile links (use first username if multiple)
-    _hn_user = (hn_usernames or [None])[0]
+    # Build per-username HN profile links (use first effective username if multiple)
+    _hn_user = (effective_hn_usernames or [None])[0]
     hn_submitted_url = (
         f"https://news.ycombinator.com/submitted?id={_hn_user}" if _hn_user else None
     )
@@ -304,7 +314,8 @@ def generate_site(
 
     # Render config page
     config_ctx = {
-        "hn_usernames": hn_usernames or [],
+        "hn_usernames": effective_hn_usernames or [],
+        "auto_discovered_hn_username": auto_discovered_hn_username,
         "playlist_ids": playlist_ids,
         "channel_ids": channel_ids,
         "auto_discovered_channels": auto_discovered_channels,
