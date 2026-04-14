@@ -40,24 +40,6 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - name: Check token can manage repository variables
-        run: |
-          if ! gh api -X GET "repos/$GITHUB_REPOSITORY/actions/variables" --silent 2>/dev/null; then
-            echo "::error::❌ The token cannot manage Actions variables for this repository."
-            echo ""
-            echo "To fix this (takes about 30 seconds):"
-            echo "  1. Go to your repository settings:"
-            echo "       https://github.com/$GITHUB_REPOSITORY/settings/actions"
-            echo "  2. Scroll down to 'Workflow permissions'."
-            echo "  3. Select 'Read and write permissions'."
-            echo "  4. Click Save, then re-run this workflow."
-            echo ""
-            echo "This one-time setting lets the built-in GITHUB_TOKEN create"
-            echo "repository variables — no personal access token is required."
-            exit 1
-          fi
-          echo "✅ Token has permission to manage repository variables."
-
       - name: Set HN_USERNAME variable
         if: inputs.hn_username != ''
         env:
