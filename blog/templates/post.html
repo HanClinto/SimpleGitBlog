@@ -21,7 +21,15 @@
         <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
         {% endif %}
         &mdash;
+        {% if post.source == 'github' %}
+        <span class="source-badge source-badge--github">✍️ GitHub</span>
+        {% elif post.source == 'youtube' %}
+        <span class="source-badge source-badge--youtube">🎬 YouTube</span>
+        {% elif post.source == 'hackernews' %}
+        <span class="source-badge source-badge--hackernews">{{ '📰 HN Story' if post.metadata.hn_type == 'story' else '💬 HN Comment' }}</span>
+        {% else %}
         <span class="source-badge source-badge--{{ post.source }}">{{ post.source }}</span>
+        {% endif %}
       </span>
     </div>
     {% if post.labels %}
