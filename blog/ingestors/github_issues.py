@@ -297,7 +297,6 @@ def _process_issue(
         "created_at": issue["created_at"],
         "created_at_fmt": format_date(issue["created_at"]),
         "created_at_iso": format_datetime(issue["created_at"]),
-        "updated_at": issue.get("updated_at", issue["created_at"]),
         "body_html": markdown_to_safe_html(issue.get("body") or ""),
         "excerpt": extract_excerpt(issue.get("body") or ""),
         "source": "github",
@@ -307,7 +306,6 @@ def _process_issue(
         "comment_count": len(processed_comments),
         "comments": processed_comments,
         "metadata": {
-            "github_issue_url": issue["html_url"],
             "number": issue_number,
         },
     }
@@ -334,8 +332,7 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
 
     # Primary allowed list: repo owner + collaborators with write+ access
     collaborators = _fetch_write_collaborators(repo, headers)
-    display = collaborators | {repo_owner.lower()}
-    print(f"  Allowed posters (owner + write-access collaborators): {display}")
+    print(f"  Allowed posters: {repo_owner} + {len(collaborators)} write-access collaborator(s).")
 
     allowed_issues = [
         i for i in raw_issues

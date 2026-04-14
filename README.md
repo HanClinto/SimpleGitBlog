@@ -194,7 +194,8 @@ Each source is handled by an *ingestor* in `blog/ingestors/`. Every ingestor pro
 | `blog/ingestors/hackernews.py` | 📰 My Reading ingestor |
 | `blog/templates/` | Jinja2 HTML templates |
 | `blog/static/` | CSS and favicon |
-| `config/blocked_users.txt` | Blocked commenter usernames |
+| `config/blocked_users.txt` | Blocked commenter usernames (one per line) |
+| `config/hidden_labels.txt` | Labels that hide a post from the blog (default: `hide-post`) |
 | `config/youtube_playlists.txt.example` | Template for local YouTube config |
 | `config/hackernews.txt.example` | Template for local HN config |
 | `.github/workflows/build-blog.yml` | CI/CD pipeline |

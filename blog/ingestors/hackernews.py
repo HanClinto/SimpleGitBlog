@@ -158,6 +158,7 @@ def _process_story(hit: dict) -> dict | None:
         "source": "hackernews",
         "section": "reading",
         "labels": [],
+        "reactions": [],
         "comment_count": 0,
         "comments": [],
         "metadata": {
@@ -221,6 +222,7 @@ def _process_comment(hit: dict) -> dict | None:
         "source": "hackernews",
         "section": "reading",
         "labels": [],
+        "reactions": [],
         "comment_count": 0,
         "comments": [],
         "metadata": {

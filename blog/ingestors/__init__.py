@@ -18,7 +18,9 @@ post dicts conforming to the common schema:
     source         str   Source identifier: "github" | "youtube" | "hackernews"
     section        str   Section key: "writing" | "watching" | "reading"
     labels         list  Label strings (GitHub only; empty list for other sources)
-    reactions      list  Reaction dicts [{emoji, label, count}] (GitHub only; empty for others)
+    reactions      list  Reaction dicts [{emoji, label, count, users}]
+                         GitHub only; empty list for other sources.
+                         users is a list of GitHub login strings.
     comment_count  int   Number of blog comments (GitHub only; 0 for other sources)
     comments       list  Comment dicts (GitHub only; empty list for other sources)
     metadata       dict  Source-specific extra data
@@ -33,6 +35,6 @@ Each comment dict in ``comments`` has:
     created_at_iso str   ISO datetime for <time datetime="…"> attribute
     comment_url    str   Direct URL to this comment on GitHub
     body_html      str   Sanitized HTML body
-    reactions      list  Reaction dicts [{emoji, label, count}]
+    reactions      list  Reaction dicts [{emoji, label, count, users}]
     fork_blog_url  str|None  GitHub Pages URL of the commenter's blog fork, if any
 """
