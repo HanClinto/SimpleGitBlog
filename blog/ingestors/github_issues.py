@@ -21,6 +21,7 @@ from blog.utils import extract_excerpt, format_date, format_datetime, markdown_t
 
 _BLOCKED_USERS_FILE = "blocked_users.txt"
 _HIDDEN_LABELS_FILE = "hidden_labels.txt"
+_DEFAULT_HIDDEN_LABELS: set[str] = {"hide-post"}
 
 # Maps GitHub reaction keys to display emoji + accessible label
 _REACTION_MAP = [
@@ -106,12 +107,12 @@ def _load_blocked_users(config_dir: Path) -> set:
 # Config: hidden labels
 # ---------------------------------------------------------------------------
 
-def _load_hidden_labels(config_dir: Path) -> set:
+def _load_hidden_labels(config_dir: Path) -> set[str]:
     """Return the set of label names that cause a post to be hidden."""
     hidden: set[str] = set()
     path = config_dir / _HIDDEN_LABELS_FILE
     if not path.exists():
-        return {"hide-post"}
+        return set(_DEFAULT_HIDDEN_LABELS)
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line and not line.startswith("#"):
@@ -119,7 +120,7 @@ def _load_hidden_labels(config_dir: Path) -> set:
     return hidden
 
 
-def _issue_has_hidden_label(issue: dict, hidden_labels: set) -> bool:
+def _issue_has_hidden_label(issue: dict, hidden_labels: set[str]) -> bool:
     """Return True if the issue has any label in the hidden_labels set."""
     issue_labels = {lbl["name"] for lbl in issue.get("labels", [])}
     return bool(issue_labels & hidden_labels)
