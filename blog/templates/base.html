@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}{{ repo_name }}{% endblock %}</title>
+  {% block meta %}
+  <meta name="description" content="{{ repo_name }} — a personal blog powered by SimpleGitBlog." />
+  <meta property="og:title" content="{{ repo_name }}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{{ base_path }}" />
+  {% endblock %}
   <link rel="icon" type="image/svg+xml" href="{{ base_path }}static/favicon.svg" />
   <link rel="stylesheet" href="{{ base_path }}static/style.css" />
 </head>

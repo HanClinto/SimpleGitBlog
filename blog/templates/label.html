@@ -18,7 +18,7 @@
     <a href="{{ post.post_url }}">{{ post.title }}</a>
   </h3>
   <div class="post-card__meta">
-    {% if post.avatar_url %}
+    {% if post.source != 'youtube' and post.avatar_url %}
     <img class="avatar avatar--small" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="24" height="24" />
     {% endif %}
     <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
@@ -29,9 +29,14 @@
     {% if post.comment_count == 1 %}1 comment{% else %}{{ post.comment_count }} comments{% endif %}
     {% endif %}
   </div>
+  {% if post.source == 'youtube' and post.avatar_url %}
+  <a href="{{ post.post_url }}">
+    <img class="post-card__video-thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="320" height="180" loading="lazy" />
+  </a>
+  {% endif %}
   {% if post.labels %}
   <div class="post-card__labels">
-    {% for lbl in post.labels %}
+    {% for lbl in post.labels if lbl != label_name %}
     <a href="{{ base_path }}labels/{{ label_slug(lbl) }}/" class="label">{{ lbl }}</a>
     {% endfor %}
   </div>

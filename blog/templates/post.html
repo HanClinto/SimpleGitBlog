@@ -2,12 +2,25 @@
 
 {% block title %}{{ post.title }} &mdash; {{ repo_name }}{% endblock %}
 
+{% block meta %}
+<meta name="description" content="{{ post.excerpt if post.excerpt else post.title }}" />
+<meta property="og:title" content="{{ post.title }}" />
+<meta property="og:description" content="{{ post.excerpt if post.excerpt else post.title }}" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="{{ post.post_url }}" />
+{% if post.source == 'youtube' and post.avatar_url %}
+<meta property="og:image" content="{{ post.avatar_url }}" />
+{% elif post.avatar_url %}
+<meta property="og:image" content="{{ post.avatar_url }}" />
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <article class="post">
   <header class="post__header">
     <h1 class="post__title">{{ post.title }}</h1>
     <div class="post__meta">
-      {% if post.avatar_url %}
+      {% if post.avatar_url and post.source != 'youtube' %}
       <img class="avatar" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="36" height="36" />
       {% endif %}
       <span>
@@ -21,7 +34,15 @@
         <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
         {% endif %}
         &mdash;
+        {% if post.source == 'github' %}
+        <span class="source-badge source-badge--github">✍️ GitHub</span>
+        {% elif post.source == 'youtube' %}
+        <span class="source-badge source-badge--youtube">🎬 YouTube</span>
+        {% elif post.source == 'hackernews' %}
+        <span class="source-badge source-badge--hackernews">{{ '📰 HN Story' if post.metadata.hn_type == 'story' else '💬 HN Comment' }}</span>
+        {% else %}
         <span class="source-badge source-badge--{{ post.source }}">{{ post.source }}</span>
+        {% endif %}
       </span>
     </div>
     {% if post.labels %}

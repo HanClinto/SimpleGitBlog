@@ -28,7 +28,7 @@
   {% endif %}
   {% if post.labels %}
   <div class="post-card__labels">
-    {% for lbl in post.labels %}
+    {% for lbl in post.labels if lbl != 'Blog Post' %}
     <a href="{{ base_path }}labels/{{ label_slug(lbl) }}/" class="label">{{ lbl }}</a>
     {% endfor %}
   </div>
@@ -61,14 +61,25 @@
   <div class="post-card__meta">
     <a href="{{ base_path }}labels/{{ label_slug('Link Submission') if post.metadata.hn_type == 'story' else label_slug('HN Comment') }}/" class="source-badge source-badge--hackernews">{{ '📰 Link Submission' if post.metadata.hn_type == 'story' else '💬 HN Comment' }}</a>
     <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+    {% if post.metadata.hn_type == 'story' %}
     &middot; {{ post.metadata.points }} pt{% if post.metadata.points != 1 %}s{% endif %}
     &middot; <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.num_comments }} comment{% if post.metadata.num_comments != 1 %}s{% endif %} on HN</a>
+    {% endif %}
   </div>
   <h3 class="post-card__title">
+    {% if post.metadata.hn_type == 'story' %}
     <a href="{{ post.metadata.article_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
+    {% else %}
+    <a href="{{ post.post_url }}">{{ post.title }}</a>
+    {% endif %}
   </h3>
   {% if post.excerpt %}
   <p class="post-card__excerpt">{{ post.excerpt }}</p>
+  {% endif %}
+  {% if post.metadata.hn_type == 'story' %}
+  <a class="post-card__read-more" href="{{ post.post_url }}">Read more &rarr;</a>
+  {% else %}
+  <a class="post-card__read-more" href="{{ post.post_url }}">Read comment &rarr;</a>
   {% endif %}
 </article>
 
