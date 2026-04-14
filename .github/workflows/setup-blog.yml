@@ -7,6 +7,13 @@ name: Set Up Blog
 # How to run:
 #   Go to Actions → "Set Up Blog" → Run workflow → fill in the inputs → Run.
 #   The workflow sets the variables and then triggers a fresh blog build.
+#
+# Token permissions:
+#   By default this workflow uses GITHUB_TOKEN, which may lack permission to
+#   manage Actions variables in some repository configurations.  If the
+#   preflight check fails, create a fine-grained Personal Access Token (PAT)
+#   with "Actions: Read and write" permission for this repository, add it as a
+#   repository secret named SETUP_BLOG_PAT, then re-run the workflow.
 
 on:
   workflow_dispatch:
@@ -33,9 +40,28 @@ jobs:
   configure:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Use SETUP_BLOG_PAT if provided; otherwise fall back to GITHUB_TOKEN.
+      # GITHUB_TOKEN may lack permission to manage Actions variables on some
+      # repositories.  See the header comment for how to create SETUP_BLOG_PAT.
+      GH_TOKEN: ${{ secrets.SETUP_BLOG_PAT || secrets.GITHUB_TOKEN }}
 
     steps:
+      - name: Check token can manage repository variables
+        run: |
+          if ! gh api -X GET "repos/$GITHUB_REPOSITORY/actions/variables" --silent 2>/dev/null; then
+            echo "::error::❌ The token cannot manage Actions variables for this repository."
+            echo ""
+            echo "To fix this:"
+            echo "  1. Create a fine-grained Personal Access Token at:"
+            echo "       https://github.com/settings/personal-access-tokens/new"
+            echo "  2. Grant it access to this repository with 'Actions: Read and write'."
+            echo "  3. Add it as a repository secret named SETUP_BLOG_PAT:"
+            echo "       https://github.com/$GITHUB_REPOSITORY/settings/secrets/actions/new"
+            echo "  4. Re-run this workflow."
+            exit 1
+          fi
+          echo "✅ Token has permission to manage repository variables."
+
       - name: Set HN_USERNAME variable
         if: inputs.hn_username != ''
         env:
