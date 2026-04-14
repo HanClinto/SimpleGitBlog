@@ -81,11 +81,7 @@ Any open Issue authored by the **repository owner or a collaborator with write a
 |------|--------------------------|
 | Repository owner | ✅ Yes |
 | Collaborator with Write / Maintain / Admin access | ✅ Yes |
-| External contributor listed in `config/allowed_posters.txt` | ✅ Yes |
-| Anyone (if `*` is in `config/allowed_posters.txt`) | ✅ Yes |
 | Other GitHub users | ❌ No |
-
-To grant posting rights to a user who doesn't have repository write access, add their username to `config/allowed_posters.txt`.
 
 To block commenters, add their usernames to `config/blocked_users.txt`.
 
@@ -180,7 +176,6 @@ Each source is handled by an *ingestor* in `blog/ingestors/`. Every ingestor pro
 | `blog/ingestors/hackernews.py` | 📰 My Reading ingestor |
 | `blog/templates/` | Jinja2 HTML templates |
 | `blog/static/` | CSS and favicon |
-| `config/allowed_posters.txt` | Supplemental poster allow-list (write-access collaborators are allowed automatically) |
 | `config/blocked_users.txt` | Blocked commenter usernames |
 | `config/youtube_playlists.txt.example` | Template for local YouTube config |
 | `config/hackernews.txt.example` | Template for local HN config |

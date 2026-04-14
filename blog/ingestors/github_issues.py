@@ -20,7 +20,6 @@ import requests
 from blog.utils import extract_excerpt, format_date, format_datetime, markdown_to_safe_html
 
 _BLOCKED_USERS_FILE = "blocked_users.txt"
-_ALLOWED_POSTERS_FILE = "allowed_posters.txt"
 
 # Maps GitHub reaction keys to display emoji + accessible label
 _REACTION_MAP = [
@@ -87,7 +86,7 @@ def _fetch_comments(repo: str, issue_number: int, headers: dict) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Config: blocked users / supplemental allowed posters
+# Config: blocked users
 # ---------------------------------------------------------------------------
 
 def _load_blocked_users(config_dir: Path) -> set:
@@ -100,31 +99,6 @@ def _load_blocked_users(config_dir: Path) -> set:
         if line and not line.startswith("#"):
             blocked.add(line.lower())
     return blocked
-
-
-def _load_extra_allowed_posters(config_dir: Path) -> tuple[set[str], bool]:
-    """
-    Load the supplemental allowed-posters list.
-
-    Returns (extra_set, open_mode).
-    open_mode=True means '*' was found — all users are allowed regardless of
-    collaborator status.  The repo owner and write-access collaborators are
-    always allowed and do not need to be listed here.
-    """
-    extra: set[str] = set()
-    open_mode = False
-    path = config_dir / _ALLOWED_POSTERS_FILE
-    if not path.exists():
-        return extra, open_mode
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line == "*":
-            open_mode = True
-        else:
-            extra.add(line.lower())
-    return extra, open_mode
 
 
 # ---------------------------------------------------------------------------
@@ -157,20 +131,10 @@ def _fetch_write_collaborators(repo: str, headers: dict) -> set[str]:
         return set()
 
 
-def _is_allowed_poster(
-    login: str,
-    repo_owner: str,
-    collaborators: set[str],
-    extra_allowed: set[str],
-    open_mode: bool,
-) -> bool:
-    if open_mode:
-        return True
+def _is_allowed_poster(login: str, repo_owner: str, collaborators: set[str]) -> bool:
     if login.lower() == repo_owner.lower():
         return True
-    if login.lower() in collaborators:
-        return True
-    return login.lower() in extra_allowed
+    return login.lower() in collaborators
 
 
 # ---------------------------------------------------------------------------
@@ -303,19 +267,12 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
 
     # Primary allowed list: repo owner + collaborators with write+ access
     collaborators = _fetch_write_collaborators(repo, headers)
-    # Supplemental: any extra names in allowed_posters.txt (additive override)
-    extra_allowed, open_mode = _load_extra_allowed_posters(config_dir)
-    if open_mode:
-        print("  Allowed posters: * (open mode — all users)")
-    else:
-        display = collaborators | extra_allowed | {repo_owner.lower()}
-        print(f"  Allowed posters (owner + write-access collaborators): {display}")
+    display = collaborators | {repo_owner.lower()}
+    print(f"  Allowed posters (owner + write-access collaborators): {display}")
 
     allowed_issues = [
         i for i in raw_issues
-        if _is_allowed_poster(
-            i["user"]["login"], repo_owner, collaborators, extra_allowed, open_mode
-        )
+        if _is_allowed_poster(i["user"]["login"], repo_owner, collaborators)
     ]
     skipped = len(raw_issues) - len(allowed_issues)
     if skipped:
