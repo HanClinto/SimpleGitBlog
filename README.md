@@ -56,13 +56,7 @@ Click **[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo)** 
 
 Go to [**Settings → Pages → Build and deployment**](../../settings/pages) and set the source to **GitHub Actions**.
 
-### 3. Allow Actions to manage repository settings
-
-Go to [**Settings → Actions → General → Workflow permissions**](../../settings/actions) and select **Read and write permissions**, then click **Save**.
-
-This one-time toggle lets the built-in GITHUB_TOKEN create repository variables when you run the **Set Up Blog** workflow — no personal access token or extra credentials needed. The build workflow itself only needs read access; this setting is required only for the setup step.
-
-### 4. Configure your blog (optional)
+### 3. Configure your blog (optional)
 
 Connect optional content sources — no code or API keys needed:
 
@@ -75,7 +69,7 @@ The **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow saves you
 
 > **Tip:** You can skip this step entirely and come back later — the blog works out of the box with just GitHub Issues.
 
-### 5. Publish your first post
+### 4. Publish your first post
 
 1. [Open a new Issue](../../issues/new) in your forked repository.
 2. Give it a descriptive **title** — this becomes your post title.
