@@ -58,14 +58,14 @@ Go to [**Settings → Pages → Build and deployment**](../../settings/pages) an
 
 ### 3. Configure your blog (optional)
 
-Connect optional content sources — no code or API keys needed:
+Connect optional content sources by linking your social accounts on your GitHub profile — no code or API keys needed.
 
-| What to set | Where it shows up | How |
-|-------------|-------------------|-----|
-| Your **Hacker News username** | [My Reading](#my-reading--hacker-news) section | Run the **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow ([Actions tab](../../actions) → Set Up Blog → Run workflow) |
-| Your **YouTube playlist ID(s)** | [My Watching](#my-watching--youtube-playlists) section | Same workflow, or add a `YOUTUBE_PLAYLIST_IDS` [repository variable](../../settings/variables/actions) |
+Go to [**github.com/settings/profile**](https://github.com/settings/profile), scroll to **Social accounts**, and add links to your:
 
-The **[Set Up Blog](../../actions/workflows/setup-blog.yml)** workflow saves your settings as [GitHub Actions repository Variables](../../settings/variables/actions) ([Settings → Secrets and variables → Actions → Variables](../../settings/variables/actions)). Settings are stored per-fork, so they never appear in source code and forks start with a clean slate.
+- **YouTube channel** — videos from your channel appear in the **My Videos** section; add playlist IDs separately (see [My Watching](#my-watching--youtube-playlists)) for the **My Watching** sidebar
+- **Hacker News profile** — your submissions and comments appear in the **My Reading** section
+
+> **Supported:** YouTube and Hacker News. LinkedIn, X/Twitter, and Facebook are not supported — they require API keys to pull content.
 
 > **Tip:** You can skip this step entirely and come back later — the blog works out of the box with just GitHub Issues.
 
