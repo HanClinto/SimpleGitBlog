@@ -21,7 +21,7 @@ from blog.utils import extract_excerpt, format_date, format_datetime, markdown_t
 
 _BLOCKED_USERS_FILE = "blocked_users.txt"
 _HIDDEN_LABELS_FILE = "hidden_labels.txt"
-_DEFAULT_HIDDEN_LABELS: set[str] = {"hide-post"}
+_DEFAULT_HIDDEN_LABELS: set[str] = {"hidden", "draft"}
 
 # Maps GitHub reaction keys to display emoji + accessible label
 _REACTION_MAP = [

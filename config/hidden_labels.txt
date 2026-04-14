@@ -1,3 +1,4 @@
 # Labels that cause a post to be hidden from the blog.
 # One label per line. Lines starting with # are comments.
-hide-post
+draft
+hidden
