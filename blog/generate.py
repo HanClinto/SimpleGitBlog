@@ -22,6 +22,12 @@ Environment variables:
                          Required to enable the "My Reading" section.
                          Set this as a GitHub Actions repository variable
                          (Settings → Variables) so it is NOT stored in source.
+
+    FEED_SOURCES         Optional. Comma- or newline-separated list of source
+                         keys to include in the main chronological feed.
+                         Everything else automatically becomes a sidebar panel.
+                         Valid keys: writing, channel, playlists, hn_stories, hn_comments
+                         Default:    writing,channel,hn_stories
 """
 
 import os
@@ -59,6 +65,44 @@ CONFIG_DIR = SCRIPT_DIR.parent / "config"
 # ---------------------------------------------------------------------------
 
 _PAGE_SIZE = 10
+
+# ---------------------------------------------------------------------------
+# Content routing
+# ---------------------------------------------------------------------------
+
+# Ordered list of all recognised source keys.
+_ALL_SOURCES = ("writing", "channel", "playlists", "hn_stories", "hn_comments")
+
+# Which sources appear in the main chronological feed by default.
+_DEFAULT_FEED_SOURCES: frozenset[str] = frozenset({"writing", "channel", "hn_stories"})
+
+
+def _parse_feed_sources(env_val: str | None) -> frozenset[str]:
+    """Parse FEED_SOURCES env var into a frozenset of valid source keys.
+
+    Accepts comma- or newline-separated values.  Unrecognised tokens are
+    silently ignored.  Falls back to _DEFAULT_FEED_SOURCES if the result
+    would be empty.
+    """
+    if not env_val:
+        return _DEFAULT_FEED_SOURCES
+    parsed = frozenset(
+        tok
+        for raw in re.split(r"[\r\n,]+", env_val)
+        for tok in [raw.strip().lower()]
+        if tok in _ALL_SOURCES
+    )
+    return parsed if parsed else _DEFAULT_FEED_SOURCES
+
+
+# Human-readable labels for each source key (used in config page + sidebar headings).
+_SOURCE_META: dict[str, dict] = {
+    "writing":     {"title": "My Writing",     "icon": "✍️"},
+    "channel":     {"title": "My Videos",      "icon": "🎥"},
+    "playlists":   {"title": "My Watching",    "icon": "📺"},
+    "hn_stories":  {"title": "HN Submissions", "icon": "🗞️"},
+    "hn_comments": {"title": "HN Comments",   "icon": "💬"},
+}
 
 # ---------------------------------------------------------------------------
 # Static asset helpers
@@ -100,8 +144,11 @@ def generate_site(
     youtube_playlist_ids: str | None = None,
     youtube_channel_ids: str | None = None,
     hn_usernames: list[str] | None = None,
+    feed_sources: frozenset[str] | None = None,
 ) -> None:
     _start = time.monotonic()
+    if feed_sources is None:
+        feed_sources = _DEFAULT_FEED_SOURCES
 
     repo_owner = repo.split("/")[0]
     repo_name = repo.split("/")[-1]
@@ -189,19 +236,11 @@ def generate_site(
     )
 
     # --- Sidebar data ---
-    # Split HN posts: stories go into the main feed, comments go in the sidebar
     _SIDEBAR_LIMIT = 5
     hn_stories = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
     hn_comments = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "comment"]
 
-    # Unified main feed: writing + channel videos + HN stories, newest first
-    feed_posts = sorted(
-        writing_posts + channel_posts + hn_stories,
-        key=lambda p: p["created_at"],
-        reverse=True,
-    )
-    total_pages = max(1, (len(feed_posts) + _PAGE_SIZE - 1) // _PAGE_SIZE)
-    # Build per-username HN profile links (use first effective username if multiple)
+    # Build per-username HN profile links
     _hn_user = (effective_hn_usernames or [None])[0]
     hn_submitted_url = (
         f"https://news.ycombinator.com/submitted?id={_hn_user}" if _hn_user else None
@@ -213,29 +252,66 @@ def generate_site(
         f"https://news.ycombinator.com/user?id={_hn_user}" if _hn_user else None
     )
 
-    # Build per-playlist sidebar panels (up to _SIDEBAR_LIMIT videos each, in playlist order)
-    playlist_groups: list[dict] = []
-    _seen_pids: dict[str, dict] = {}
-    for p in playlist_posts:
-        src_id = p.get("metadata", {}).get("source_id", "")
-        if src_id not in _seen_pids:
-            grp: dict = {
-                "source_id": src_id,
-                "view_more_url": p.get("metadata", {}).get("view_more_url", ""),
-                "posts": [],
-            }
-            playlist_groups.append(grp)
-            _seen_pids[src_id] = grp
-        if len(_seen_pids[src_id]["posts"]) < _SIDEBAR_LIMIT:
-            _seen_pids[src_id]["posts"].append(p)
-
-    sidebar = {
-        "hn_comments":      hn_comments[:_SIDEBAR_LIMIT],
-        "hn_threads_url":   hn_threads_url,
-        "hn_profile_url":   hn_profile_url,
-        "hn_username":      _hn_user,
-        "playlist_groups":  playlist_groups,
+    # Map source key → raw post list
+    _source_posts: dict[str, list[dict]] = {
+        "writing":     writing_posts,
+        "channel":     channel_posts,
+        "playlists":   playlist_posts,
+        "hn_stories":  hn_stories,
+        "hn_comments": hn_comments,
     }
+
+    # --- Main feed ---
+    feed_posts = sorted(
+        [p for key in _ALL_SOURCES if key in feed_sources for p in _source_posts[key]],
+        key=lambda p: p["created_at"],
+        reverse=True,
+    )
+    total_pages = max(1, (len(feed_posts) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+
+    # --- Sidebar panels (one per source not in the feed) ---
+    # Playlists each get their own panel; all others get a single panel.
+    sidebar_panels: list[dict] = []
+    for key in _ALL_SOURCES:
+        if key in feed_sources:
+            continue
+        meta = _SOURCE_META[key]
+        if key == "playlists":
+            # One panel per playlist
+            seen: dict[str, dict] = {}
+            grp_list: list[dict] = []
+            for p in playlist_posts:
+                src_id = p.get("metadata", {}).get("source_id", "")
+                if src_id not in seen:
+                    grp: dict = {
+                        "type": "playlist",
+                        "title": meta["title"],
+                        "icon": meta["icon"],
+                        "posts": [],
+                        "view_all_url": p.get("metadata", {}).get("view_more_url", ""),
+                    }
+                    grp_list.append(grp)
+                    seen[src_id] = grp
+                if len(seen[src_id]["posts"]) < _SIDEBAR_LIMIT:
+                    seen[src_id]["posts"].append(p)
+            sidebar_panels.extend(grp_list)
+        else:
+            view_all = {
+                "writing":     f"{repo_url}/issues",
+                "channel":     None,
+                "hn_stories":  hn_submitted_url,
+                "hn_comments": hn_threads_url,
+            }.get(key)
+            sidebar_panels.append({
+                "type":        key,
+                "title":       meta["title"],
+                "icon":        meta["icon"],
+                "posts":       _source_posts[key][:_SIDEBAR_LIMIT],
+                "view_all_url": view_all,
+                # HN-specific extras
+                "hn_threads_url":  hn_threads_url,
+                "hn_profile_url":  hn_profile_url,
+            })
 
     # --- Jinja2 setup ---
     env = Environment(
@@ -292,7 +368,7 @@ def generate_site(
         next_url = f"{base_path}page/{page_num + 1}/" if page_num < total_pages else None
         page_html = index_tmpl.render(
             feed_posts=page_posts,
-            sidebar=sidebar,
+            sidebar_panels=sidebar_panels,
             page_num=page_num,
             total_pages=total_pages,
             prev_url=prev_url,
@@ -344,6 +420,7 @@ def generate_site(
         "video_post_count": len(channel_posts),
         "playlist_post_count": len(playlist_posts),
         "reading_post_count": len(reading_posts),
+        "feed_sources": list(feed_sources),
     }
     config_tmpl = env.get_template("config.html")
     config_html = config_tmpl.render(**config_ctx)
@@ -378,6 +455,7 @@ def main() -> None:
 
     # HN usernames: from HN_USERNAME env var and/or local config file (gitignored)
     hn_usernames = hackernews.load_usernames(os.environ.get("HN_USERNAME") or None)
+    feed_sources = _parse_feed_sources(os.environ.get("FEED_SOURCES") or None)
 
     generate_site(
         repo=repo,
@@ -386,6 +464,7 @@ def main() -> None:
         youtube_playlist_ids=youtube_playlist_ids,
         youtube_channel_ids=youtube_channel_ids,
         hn_usernames=hn_usernames or None,
+        feed_sources=feed_sources,
     )
 
 

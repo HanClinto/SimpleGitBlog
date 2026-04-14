@@ -113,46 +113,50 @@
 
 </div>{# /main-column #}
 
-{# ====== SIDEBAR — HN Comments + YouTube Playlists ====== #}
-{% if sidebar.hn_comments or sidebar.playlist_groups %}
+{# ====== SIDEBAR — generic panel loop ====== #}
+{% if sidebar_panels %}
 <aside class="page-sidebar">
 
-{# --- Hacker News Comments --- #}
-{% if sidebar.hn_comments %}
-<section class="sidebar-section" id="sidebar-hn-comments">
+{% for panel in sidebar_panels %}
+<section class="sidebar-section" id="sidebar-{{ panel.type }}-{{ loop.index }}">
   <h2 class="sidebar-section__heading">
-    <span aria-hidden="true">💬</span> HN Comments
+    <span aria-hidden="true">{{ panel.icon }}</span> {{ panel.title }}
   </h2>
+
+  {# --- HN Comments --- #}
+  {% if panel.type == 'hn_comments' %}
   <ul class="sidebar-list">
-    {% for post in sidebar.hn_comments %}
+    {% for post in panel.posts %}
     <li class="sidebar-item">
       <a class="sidebar-item__title" href="{{ post.metadata.story_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.story_title }}</a>
       <div class="sidebar-item__meta">
         <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">My comment</a>
         &middot; <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
       </div>
-      {% if post.excerpt %}
-      <p class="sidebar-item__excerpt">{{ post.excerpt }}</p>
-      {% endif %}
+      {% if post.excerpt %}<p class="sidebar-item__excerpt">{{ post.excerpt }}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>
-  {% if sidebar.hn_threads_url %}
-  <a class="sidebar-section__view-all" href="{{ sidebar.hn_threads_url }}" target="_blank" rel="noopener noreferrer nofollow">
-    View all comments on HN &rarr;
-  </a>
-  {% endif %}
-</section>
-{% endif %}
 
-{# --- YouTube Playlists (one panel per playlist) --- #}
-{% for grp in sidebar.playlist_groups %}
-<section class="sidebar-section" id="sidebar-playlist-{{ loop.index }}">
-  <h2 class="sidebar-section__heading">
-    <span aria-hidden="true">📺</span> My Watching
-  </h2>
+  {# --- HN Submissions --- #}
+  {% elif panel.type == 'hn_stories' %}
+  <ul class="sidebar-list">
+    {% for post in panel.posts %}
+    <li class="sidebar-item">
+      <a class="sidebar-item__title" href="{{ post.metadata.article_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
+      <div class="sidebar-item__meta">
+        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        &middot; {{ post.metadata.points }} pt{% if post.metadata.points != 1 %}s{% endif %}
+        &middot; <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.num_comments }} comment{% if post.metadata.num_comments != 1 %}s{% endif %}</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+
+  {# --- Video sources (playlist, channel) --- #}
+  {% elif panel.type in ('playlist', 'channel') %}
   <ul class="sidebar-list sidebar-list--videos">
-    {% for post in grp.posts %}
+    {% for post in panel.posts %}
     <li class="sidebar-item sidebar-item--video">
       {% if post.avatar_url %}
       <a class="sidebar-item__thumb-link" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
@@ -161,16 +165,27 @@
       {% endif %}
       <div class="sidebar-item__video-info">
         <a class="sidebar-item__title" href="{{ post.post_url }}">{{ post.title }}</a>
-        <div class="sidebar-item__meta">
-          <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
-        </div>
+        <div class="sidebar-item__meta"><time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time></div>
       </div>
     </li>
     {% endfor %}
   </ul>
-  {% if grp.view_more_url %}
-  <a class="sidebar-section__view-all" href="{{ grp.view_more_url }}" target="_blank" rel="noopener noreferrer nofollow">
-    View full playlist on YouTube &rarr;
+
+  {# --- Generic (writing, etc.) --- #}
+  {% else %}
+  <ul class="sidebar-list">
+    {% for post in panel.posts %}
+    <li class="sidebar-item">
+      <a class="sidebar-item__title" href="{{ post.post_url }}">{{ post.title }}</a>
+      <div class="sidebar-item__meta"><time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time></div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if panel.view_all_url %}
+  <a class="sidebar-section__view-all" href="{{ panel.view_all_url }}" target="_blank" rel="noopener noreferrer nofollow">
+    View all &rarr;
   </a>
   {% endif %}
 </section>

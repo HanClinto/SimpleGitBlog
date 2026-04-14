@@ -106,7 +106,7 @@
     <thead>
       <tr>
         <th>Source</th>
-        <th>Section</th>
+        <th>Destination</th>
         <th>Status</th>
         <th>Posts</th>
       </tr>
@@ -119,7 +119,7 @@
             {{ repo_url }}/issues
           </a>
         </td>
-        <td>My Writing</td>
+        <td>{% if 'writing' in feed_sources %}<span class="config-status config-status--ok">Feed</span>{% else %}<span class="config-status config-status--off">Sidebar</span>{% endif %}</td>
         <td><span class="config-status config-status--ok">✅ Always active</span></td>
         <td>{{ writing_post_count }}</td>
       </tr>
@@ -145,7 +145,7 @@
           {% endif %}
           {% endif %}
         </td>
-        <td>My Videos</td>
+        <td>{% if 'channel' in feed_sources %}<span class="config-status config-status--ok">Feed</span>{% else %}<span class="config-status config-status--off">Sidebar</span>{% endif %}</td>
         <td>
           {% if channel_ids %}
           <span class="config-status config-status--ok">✅ Configured</span>
@@ -166,7 +166,7 @@
           <span class="config-detail">(via <code>YOUTUBE_PLAYLIST_IDS</code>)</span>
           {% endif %}
         </td>
-        <td>My Watching <span class="config-detail">(sidebar)</span></td>
+        <td>{% if 'playlists' in feed_sources %}<span class="config-status config-status--ok">Feed</span>{% else %}<span class="config-status config-status--off">Sidebar</span>{% endif %}</td>
         <td>
           {% if playlist_ids %}
           <span class="config-status config-status--ok">✅ Configured</span>
@@ -195,7 +195,7 @@
           </span>
           {% endif %}
         </td>
-        <td>My Reading</td>
+        <td>{% if 'hn_stories' in feed_sources or 'hn_comments' in feed_sources %}<span class="config-status config-status--ok">{% if 'hn_stories' in feed_sources and 'hn_comments' in feed_sources %}Feed (stories + comments){% elif 'hn_stories' in feed_sources %}Feed (stories) / Sidebar (comments){% else %}Feed (comments) / Sidebar (stories){% endif %}</span>{% else %}<span class="config-status config-status--off">Sidebar</span>{% endif %}</td>
         <td>
           {% if hn_usernames %}
           <span class="config-status config-status--ok">✅ Configured</span>
