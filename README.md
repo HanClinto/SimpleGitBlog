@@ -56,9 +56,11 @@ Click **[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo)** 
 
 Go to [**Settings → Pages → Build and deployment**](../../settings/pages) and set the source to **GitHub Actions**.
 
-### 3. Allow Actions to deploy Pages
+### 3. Allow Actions to manage repository settings
 
-Go to [**Settings → Actions → General → Workflow permissions**](../../settings/actions) and select **Read and write permissions** (needed for the Set Up Blog workflow to create repository variables). The build workflow only requires read access — Pages deployment happens via the GitHub Pages API, not a branch push.
+Go to [**Settings → Actions → General → Workflow permissions**](../../settings/actions) and select **Read and write permissions**, then click **Save**.
+
+This one-time toggle lets the built-in GITHUB_TOKEN create repository variables when you run the **Set Up Blog** workflow — no personal access token or extra credentials needed. The build workflow itself only needs read access; this setting is required only for the setup step.
 
 ### 4. Configure your blog (optional)
 
