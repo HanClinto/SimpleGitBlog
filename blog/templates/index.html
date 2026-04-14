@@ -5,123 +5,96 @@
 {% block content %}
 <div class="page-layout">
 
-{# ====== MAIN COLUMN — My Writing ====== #}
+{# ====== MAIN COLUMN — Unified Feed ====== #}
 <div class="main-column">
-{% if sections %}
-  {% for section in sections %}
-  {% if section.key == 'writing' %}
-  <section class="blog-section" id="section-{{ section.key }}">
-    <h2 class="section-heading">
-      <span class="section-icon" aria-hidden="true">{{ section.icon }}</span>
-      {{ section.title }}
-    </h2>
 
-    {% for post in section.posts %}
-    <article class="post-card post-card--{{ post.source }}">
-      <h3 class="post-card__title">
-        <a href="{{ post.post_url }}">{{ post.title }}</a>
-      </h3>
-      <div class="post-card__meta">
-        {% if post.avatar_url %}
-        <img class="avatar avatar--small" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="24" height="24" />
-        {% endif %}
-        <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
-        &mdash;
-        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
-        {% if post.source == 'github' and post.comment_count %}
-        &mdash;
-        {% if post.comment_count == 1 %}1 comment{% else %}{{ post.comment_count }} comments{% endif %}
-        {% endif %}
-        &mdash;
-        <span class="source-badge source-badge--{{ post.source }}">{{ post.source }}</span>
-      </div>
-      {% if post.excerpt %}
-      <p class="post-card__excerpt">{{ post.excerpt }}</p>
-      {% endif %}
-      {% if post.labels %}
-      <div class="post-card__labels">
-        {% for lbl in post.labels %}
-        <a href="{{ base_path }}labels/{{ label_slug(lbl) }}/" class="label">{{ lbl }}</a>
-        {% endfor %}
-      </div>
-      {% endif %}
-      <a class="post-card__read-more" href="{{ post.post_url }}">Read more &rarr;</a>
-    </article>
-    {% endfor %}
-  </section>
-  {% elif section.key == 'videos' %}
-  <section class="blog-section" id="section-{{ section.key }}">
-    <h2 class="section-heading">
-      <span class="section-icon" aria-hidden="true">{{ section.icon }}</span>
-      {{ section.title }}
-    </h2>
-    {% for post in section.posts %}
-    <article class="post-card post-card--youtube">
-      <h3 class="post-card__title">
-        <a href="{{ post.post_url }}">{{ post.title }}</a>
-      </h3>
-      <div class="post-card__meta">
-        {% if post.avatar_url %}
-        <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
-          <img class="avatar avatar--video-thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="120" height="68" loading="lazy" />
-        </a>
-        {% endif %}
-        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
-        &mdash;
-        <span class="source-badge source-badge--youtube">youtube</span>
-      </div>
-      {% if post.excerpt %}
-      <p class="post-card__excerpt">{{ post.excerpt }}</p>
-      {% endif %}
-      <a class="post-card__read-more" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">Watch on YouTube &rarr;</a>
-    </article>
-    {% endfor %}
-  </section>
-  {% elif section.key == 'watching' %}
-  <section class="blog-section" id="section-{{ section.key }}">
-    <h2 class="section-heading">
-      <span class="section-icon" aria-hidden="true">{{ section.icon }}</span>
-      {{ section.title }}
-    </h2>
-    {% for post in section.posts %}
-    <article class="post-card post-card--youtube">
-      <h3 class="post-card__title">
-        <a href="{{ post.post_url }}">{{ post.title }}</a>
-      </h3>
-      <div class="post-card__meta">
-        {% if post.avatar_url %}
-        <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
-          <img class="avatar avatar--video-thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="120" height="68" loading="lazy" />
-        </a>
-        {% endif %}
-        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
-        &mdash; {{ post.metadata.channel_name }}
-        &mdash;
-        <span class="source-badge source-badge--youtube">youtube</span>
-      </div>
-      {% if post.excerpt %}
-      <p class="post-card__excerpt">{{ post.excerpt }}</p>
-      {% endif %}
-      <a class="post-card__read-more" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">Watch on YouTube &rarr;</a>
-    </article>
-    {% endfor %}
-  </section>
+{% if feed_posts %}
+{% for post in feed_posts %}
+
+{% if post.source == 'github' %}
+<article class="post-card post-card--github">
+  <div class="post-card__meta">
+    <span class="source-badge source-badge--github">✍️ Blog Post</span>
+    <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+    {% if post.comment_count %}
+    &mdash; {{ post.comment_count }} comment{% if post.comment_count != 1 %}s{% endif %}
+    {% endif %}
+  </div>
+  <h3 class="post-card__title">
+    <a href="{{ post.post_url }}">{{ post.title }}</a>
+  </h3>
+  {% if post.excerpt %}
+  <p class="post-card__excerpt">{{ post.excerpt }}</p>
   {% endif %}
-  {% endfor %}
+  {% if post.labels %}
+  <div class="post-card__labels">
+    {% for lbl in post.labels %}
+    <a href="{{ base_path }}labels/{{ label_slug(lbl) }}/" class="label">{{ lbl }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <a class="post-card__read-more" href="{{ post.post_url }}">Read more &rarr;</a>
+</article>
+
+{% elif post.source == 'youtube' %}
+<article class="post-card post-card--youtube">
+  <div class="post-card__meta">
+    <span class="source-badge source-badge--youtube">🎬 Video</span>
+    <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+  </div>
+  <h3 class="post-card__title">
+    <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
+  </h3>
+  {% if post.avatar_url %}
+  <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
+    <img class="post-card__video-thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="320" height="180" loading="lazy" />
+  </a>
+  {% endif %}
+  {% if post.excerpt %}
+  <p class="post-card__excerpt">{{ post.excerpt }}</p>
+  {% endif %}
+  <a class="post-card__read-more" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">Watch on YouTube &rarr;</a>
+</article>
+
+{% elif post.source == 'hackernews' %}
+<article class="post-card post-card--hackernews">
+  <div class="post-card__meta">
+    <span class="source-badge source-badge--hackernews">📰 Link Submission</span>
+    <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+    &middot; {{ post.metadata.points }} pt{% if post.metadata.points != 1 %}s{% endif %}
+    &middot; <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.num_comments }} comment{% if post.metadata.num_comments != 1 %}s{% endif %} on HN</a>
+  </div>
+  <h3 class="post-card__title">
+    <a href="{{ post.metadata.article_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
+  </h3>
+  {% if post.excerpt %}
+  <p class="post-card__excerpt">{{ post.excerpt }}</p>
+  {% endif %}
+</article>
+
+{% endif %}
+{% endfor %}
+
 {% else %}
-  <section class="blog-section">
-    <h2 class="section-heading">
-      <span class="section-icon" aria-hidden="true">✍️</span>
-      My Writing
-    </h2>
-    <div class="empty-state">
-      <p>No blog posts yet.</p>
-      <p>
-        To publish your first post, <a href="{{ repo_url }}/issues/new" target="_blank" rel="noopener noreferrer">open a new issue</a>
-        on GitHub. No special label needed — any issue you open will appear here automatically.
-      </p>
-    </div>
-  </section>
+<div class="empty-state">
+  <p>No posts yet. <a href="{{ repo_url }}/issues/new" target="_blank" rel="noopener noreferrer">Open a new issue</a> to publish your first blog post.</p>
+</div>
+{% endif %}
+
+{% if total_pages > 1 %}
+<nav class="pagination" aria-label="Page navigation">
+  {% if prev_url %}
+  <a class="pagination__link" href="{{ prev_url }}">&larr; Newer</a>
+  {% else %}
+  <span class="pagination__link pagination__link--disabled">&larr; Newer</span>
+  {% endif %}
+  <span class="pagination__info">Page {{ page_num }} of {{ total_pages }}</span>
+  {% if next_url %}
+  <a class="pagination__link" href="{{ next_url }}">Older &rarr;</a>
+  {% else %}
+  <span class="pagination__link pagination__link--disabled">Older &rarr;</span>
+  {% endif %}
+</nav>
 {% endif %}
 
 {% if all_labels %}
@@ -137,37 +110,12 @@
   </ul>
 </aside>
 {% endif %}
+
 </div>{# /main-column #}
 
-{# ====== SIDEBAR — HN + YouTube ====== #}
-{% if sidebar.hn_stories or sidebar.hn_comments or sidebar.playlist_groups %}
+{# ====== SIDEBAR — HN Comments + YouTube Playlists ====== #}
+{% if sidebar.hn_comments or sidebar.playlist_groups %}
 <aside class="page-sidebar">
-
-{# --- Hacker News Submissions --- #}
-{% if sidebar.hn_stories %}
-<section class="sidebar-section" id="sidebar-hn-submissions">
-  <h2 class="sidebar-section__heading">
-    <span aria-hidden="true">🗞️</span> HN Submissions
-  </h2>
-  <ul class="sidebar-list">
-    {% for post in sidebar.hn_stories %}
-    <li class="sidebar-item">
-      <a class="sidebar-item__title" href="{{ post.metadata.article_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
-      <div class="sidebar-item__meta">
-        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
-        &middot; {{ post.metadata.points }} pt{% if post.metadata.points != 1 %}s{% endif %}
-        &middot; <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.num_comments }} comment{% if post.metadata.num_comments != 1 %}s{% endif %}</a>
-      </div>
-    </li>
-    {% endfor %}
-  </ul>
-  {% if sidebar.hn_submitted_url %}
-  <a class="sidebar-section__view-all" href="{{ sidebar.hn_submitted_url }}" target="_blank" rel="noopener noreferrer nofollow">
-    View all submissions on HN &rarr;
-  </a>
-  {% endif %}
-</section>
-{% endif %}
 
 {# --- Hacker News Comments --- #}
 {% if sidebar.hn_comments %}

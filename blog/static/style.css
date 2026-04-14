@@ -793,6 +793,51 @@ a.config-detail:hover { color: #0969da; }
   margin: 0.4rem 0 0;
 }
 
+/* --- Video thumbnail in feed cards ------------------------ */
+.post-card__video-thumb {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  border-radius: 6px;
+  margin: 0.5rem 0 0.75rem;
+}
+
+/* --- Pagination ------------------------------------------- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.pagination__link {
+  font-weight: 600;
+  color: #0969da;
+  text-decoration: none;
+  padding: 0.35em 0.85em;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  transition: background 0.12s ease;
+}
+.pagination__link:hover { background: #f1f5f9; text-decoration: none; }
+
+.pagination__link--disabled {
+  color: #cbd5e1;
+  cursor: default;
+  pointer-events: none;
+}
+
+.pagination__info {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
 /* --- Responsive ------------------------------------------- */
 @media (max-width: 900px) {
   .page-layout {

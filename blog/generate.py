@@ -55,15 +55,10 @@ STATIC_DIR = SCRIPT_DIR / "static"
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
 
 # ---------------------------------------------------------------------------
-# Section definitions — order controls display order on the site
+# Pagination
 # ---------------------------------------------------------------------------
 
-_SECTION_DEFS = [
-    {"key": "writing", "title": "My Writing",  "icon": "✍️"},
-    {"key": "videos",   "title": "My Videos",   "icon": "🎥"},
-    {"key": "watching", "title": "My Watching", "icon": "📺"},
-    {"key": "reading",  "title": "My Reading",  "icon": "📰"},
-]
+_PAGE_SIZE = 10
 
 # ---------------------------------------------------------------------------
 # Static asset helpers
@@ -186,20 +181,7 @@ def generate_site(
     else:
         print("HN_USERNAME not configured and none found in GitHub profile — skipping Hacker News ingestor.")
 
-    # Build active sections (skip sections that produced no posts)
-    section_posts = {
-        "writing": writing_posts,
-        "videos":  channel_posts,
-        "watching": playlist_posts,
-        "reading": reading_posts,
-    }
-    active_sections = [
-        {**defn, "posts": section_posts[defn["key"]]}
-        for defn in _SECTION_DEFS
-        if section_posts[defn["key"]]
-    ]
-
-    # All posts merged and sorted newest-first (for combined feed / post pages)
+    # All posts merged and sorted newest-first (for individual post page generation)
     all_posts = sorted(
         writing_posts + channel_posts + playlist_posts + reading_posts,
         key=lambda p: p["created_at"],
@@ -207,10 +189,18 @@ def generate_site(
     )
 
     # --- Sidebar data ---
-    # Split HN posts into stories vs. comments for separate sidebar panels
+    # Split HN posts: stories go into the main feed, comments go in the sidebar
     _SIDEBAR_LIMIT = 5
     hn_stories = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
     hn_comments = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "comment"]
+
+    # Unified main feed: writing + channel videos + HN stories, newest first
+    feed_posts = sorted(
+        writing_posts + channel_posts + hn_stories,
+        key=lambda p: p["created_at"],
+        reverse=True,
+    )
+    total_pages = max(1, (len(feed_posts) + _PAGE_SIZE - 1) // _PAGE_SIZE)
     # Build per-username HN profile links (use first effective username if multiple)
     _hn_user = (effective_hn_usernames or [None])[0]
     hn_submitted_url = (
@@ -240,13 +230,11 @@ def generate_site(
             _seen_pids[src_id]["posts"].append(p)
 
     sidebar = {
-        "hn_stories":      hn_stories[:_SIDEBAR_LIMIT],
-        "hn_comments":     hn_comments[:_SIDEBAR_LIMIT],
-        "hn_submitted_url": hn_submitted_url,
-        "hn_threads_url":  hn_threads_url,
-        "hn_profile_url":  hn_profile_url,
-        "hn_username":     _hn_user,
-        "playlist_groups": playlist_groups,
+        "hn_comments":      hn_comments[:_SIDEBAR_LIMIT],
+        "hn_threads_url":   hn_threads_url,
+        "hn_profile_url":   hn_profile_url,
+        "hn_username":      _hn_user,
+        "playlist_groups":  playlist_groups,
     }
 
     # --- Jinja2 setup ---
@@ -292,11 +280,32 @@ def generate_site(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Render index page
+    # Render paginated index pages
     index_tmpl = env.get_template("index.html")
-    index_html = index_tmpl.render(sections=active_sections, sidebar=sidebar)
-    (output_dir / "index.html").write_text(index_html, encoding="utf-8")
-    print("Wrote index.html")
+    for page_num in range(1, total_pages + 1):
+        start = (page_num - 1) * _PAGE_SIZE
+        page_posts = feed_posts[start : start + _PAGE_SIZE]
+        prev_url = (
+            base_path if page_num == 2
+            else f"{base_path}page/{page_num - 1}/"
+        ) if page_num > 1 else None
+        next_url = f"{base_path}page/{page_num + 1}/" if page_num < total_pages else None
+        page_html = index_tmpl.render(
+            feed_posts=page_posts,
+            sidebar=sidebar,
+            page_num=page_num,
+            total_pages=total_pages,
+            prev_url=prev_url,
+            next_url=next_url,
+        )
+        if page_num == 1:
+            (output_dir / "index.html").write_text(page_html, encoding="utf-8")
+            print("Wrote index.html")
+        else:
+            page_dir = output_dir / "page" / str(page_num)
+            page_dir.mkdir(parents=True, exist_ok=True)
+            (page_dir / "index.html").write_text(page_html, encoding="utf-8")
+            print(f"Wrote page/{page_num}/index.html")
 
     # Render individual post pages
     post_tmpl = env.get_template("post.html")
