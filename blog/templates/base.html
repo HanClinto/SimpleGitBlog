@@ -14,6 +14,15 @@
       <nav class="site-nav">
         <a href="{{ base_path }}">Home</a>
         <a href="{{ repo_url }}" target="_blank" rel="noopener noreferrer">GitHub</a>
+        {% if not blog_configured %}
+        <a
+          href="{{ repo_url }}/actions/workflows/setup-blog.yml"
+          class="setup-warning"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="This blog hasn't been set up yet. Click to run the Set Up Blog workflow."
+        >⚠️ Set up blog</a>
+        {% endif %}
       </nav>
     </div>
   </header>
@@ -26,7 +35,7 @@
     <div class="container">
       <p>
         Powered by <a href="{{ repo_url }}" target="_blank" rel="noopener noreferrer">SimpleGitBlog</a>
-        &mdash; generated {{ generated_at }} in {{ generated_in }}.
+        &mdash; <a href="{{ pipeline_url }}" target="_blank" rel="noopener noreferrer">generated {{ generated_at }}</a> in {{ generated_in }}.
       </p>
     </div>
   </footer>

@@ -68,6 +68,17 @@ img { max-width: 100%; height: auto; }
 }
 .site-nav a:hover { color: #fff; }
 
+.setup-warning {
+  background: #fef08a;
+  color: #713f12 !important;
+  border-radius: 4px;
+  padding: 0.15em 0.5em;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none !important;
+}
+.setup-warning:hover { background: #fde047 !important; color: #713f12 !important; }
+
 /* --- Footer ----------------------------------------------- */
 .site-footer {
   margin-top: 4rem;
@@ -242,6 +253,9 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
   color: #64748b;
 }
 .post__meta a { color: #475569; }
+
+.post__date-link { color: #94a3b8; text-decoration: none; }
+.post__date-link:hover { color: #475569; text-decoration: underline; }
 
 .post__labels {
   margin-top: 0.6rem;

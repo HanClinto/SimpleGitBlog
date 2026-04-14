@@ -47,6 +47,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           # YouTube — no API key needed! Uses YouTube's free public Atom/RSS feeds.
           # Set YOUTUBE_PLAYLIST_IDS as a repository Variable (Settings → Variables)
           # with one or more comma-separated playlist IDs.
@@ -55,6 +56,8 @@ jobs:
           # Hacker News — set HN_USERNAME as a repository Variable (Settings → Variables).
           # Leave unset to disable the "My Reading" section.
           HN_USERNAME: ${{ vars.HN_USERNAME }}
+          # Set by the "Set Up Blog" workflow. Controls the first-time setup warning.
+          BLOG_CONFIGURED: ${{ vars.BLOG_CONFIGURED }}
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:

@@ -71,3 +71,8 @@ jobs:
           gh variable list --repo "$GITHUB_REPOSITORY" || echo "(no variables set)"
           echo ""
           echo "Run the 'Build and Deploy Blog' workflow (or push any commit) to rebuild your site."
+
+      - name: Mark blog as configured
+        run: |
+          gh variable set BLOG_CONFIGURED --body "true" --repo "$GITHUB_REPOSITORY"
+          echo "✅ BLOG_CONFIGURED set."

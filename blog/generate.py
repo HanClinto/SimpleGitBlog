@@ -173,6 +173,16 @@ def generate_site(
     env.globals["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     env.globals["generated_in"] = f"{time.monotonic() - _start:.1f}s"
 
+    # Pipeline run URL — available when running inside GitHub Actions
+    run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
+    if run_id:
+        env.globals["pipeline_url"] = f"https://github.com/{repo}/actions/runs/{run_id}"
+    else:
+        env.globals["pipeline_url"] = f"https://github.com/{repo}/actions"
+
+    # First-time setup detection — set by the "Set Up Blog" workflow
+    env.globals["blog_configured"] = bool(os.environ.get("BLOG_CONFIGURED", "").strip())
+
     # Pre-compute labels so templates can link to /labels/{slug}/ pages
     label_map: dict[str, list[dict]] = {}
     for post in writing_posts:

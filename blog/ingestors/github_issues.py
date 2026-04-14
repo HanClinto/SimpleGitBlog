@@ -166,15 +166,38 @@ def _is_allowed_poster(login: str, repo_owner: str, collaborators: set[str]) -> 
 # Reactions
 # ---------------------------------------------------------------------------
 
-def _parse_reactions(reactions_raw: dict | None) -> list[dict]:
-    """Convert a GitHub reactions object to a list of {emoji, label, count}."""
+def _fetch_reaction_users(url: str, headers: dict) -> dict[str, list[str]]:
+    """Fetch the list of users per reaction type from a GitHub reactions endpoint.
+
+    Returns a mapping of reaction key (e.g. '+1') to a list of GitHub logins.
+    Returns an empty dict on any API error.
+    """
+    try:
+        reactions = _paginate(url, headers)
+        result: dict[str, list[str]] = {}
+        for r in reactions:
+            content = r.get("content", "")
+            login = r.get("user", {}).get("login", "")
+            if content and login:
+                result.setdefault(content, []).append(login)
+        return result
+    except requests.HTTPError:
+        return {}
+
+
+def _parse_reactions(
+    reactions_raw: dict | None,
+    users_by_key: dict[str, list[str]] | None = None,
+) -> list[dict]:
+    """Convert a GitHub reactions object to a list of {emoji, label, count, users}."""
     if not reactions_raw:
         return []
     result = []
     for key, emoji, label in _REACTION_MAP:
         count = reactions_raw.get(key, 0)
         if count > 0:
-            result.append({"emoji": emoji, "label": label, "count": count})
+            users = (users_by_key or {}).get(key, [])
+            result.append({"emoji": emoji, "label": label, "count": count, "users": users})
     return result
 
 
@@ -206,9 +229,9 @@ def _process_issue(
     fork_owners: set,
     repo: str,
     repo_name: str,
+    headers: dict,
 ) -> dict:
     """Transform a raw GitHub issue + comments into the common post schema."""
-    repo_owner_lc = repo.split("/")[0].lower()
     issue_number = issue["number"]
 
     comments = [
@@ -224,6 +247,14 @@ def _process_issue(
             f"https://github.com/{repo}/issues/{issue_number}"
             f"#issuecomment-{c['id']}"
         )
+        # Fetch per-user reaction details for comments that have reactions
+        comment_reaction_users: dict[str, list[str]] = {}
+        c_reactions_raw = c.get("reactions") or {}
+        if c_reactions_raw.get("total_count", 0) > 0:
+            reaction_url = c_reactions_raw.get("url", "")
+            if reaction_url:
+                comment_reaction_users = _fetch_reaction_users(reaction_url, headers)
+
         processed_comments.append({
             "id": c["id"],
             "author": login,
@@ -234,7 +265,7 @@ def _process_issue(
             "created_at_iso": format_datetime(c["created_at"]),
             "comment_url": comment_url,
             "body_html": markdown_to_safe_html(c.get("body") or ""),
-            "reactions": _parse_reactions(c.get("reactions")),
+            "reactions": _parse_reactions(c_reactions_raw, comment_reaction_users),
             "fork_blog_url": _build_fork_blog_url(login, repo_name) if is_forker else None,
         })
 
@@ -246,6 +277,14 @@ def _process_issue(
         lbl["name"] for lbl in issue.get("labels", [])
         if lbl["name"] != "blog-post"
     ]
+
+    # Fetch per-user reaction details for the issue itself
+    issue_reactions_raw = issue.get("reactions") or {}
+    issue_reaction_users: dict[str, list[str]] = {}
+    if issue_reactions_raw.get("total_count", 0) > 0:
+        reaction_url = issue_reactions_raw.get("url", "")
+        if reaction_url:
+            issue_reaction_users = _fetch_reaction_users(reaction_url, headers)
 
     return {
         "post_id": post_id,
@@ -264,7 +303,7 @@ def _process_issue(
         "source": "github",
         "section": "writing",
         "labels": labels,
-        "reactions": _parse_reactions(issue.get("reactions")),
+        "reactions": _parse_reactions(issue_reactions_raw, issue_reaction_users),
         "comment_count": len(processed_comments),
         "comments": processed_comments,
         "metadata": {
@@ -322,7 +361,7 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> list[dict]:
         num = issue["number"]
         print(f"  Processing issue #{num}: {issue['title']}")
         raw_comments = _fetch_comments(repo, num, headers)
-        post = _process_issue(issue, raw_comments, blocked, fork_owners, repo, repo_name)
+        post = _process_issue(issue, raw_comments, blocked, fork_owners, repo, repo_name, headers)
         posts.append(post)
 
     posts.sort(key=lambda p: p["created_at"], reverse=True)
