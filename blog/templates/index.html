@@ -3,8 +3,13 @@
 {% block title %}{{ repo_name }} &mdash; Blog{% endblock %}
 
 {% block content %}
+<div class="page-layout">
+
+{# ====== MAIN COLUMN — My Writing ====== #}
+<div class="main-column">
 {% if sections %}
   {% for section in sections %}
+  {% if section.key == 'writing' %}
   <section class="blog-section" id="section-{{ section.key }}">
     <h2 class="section-heading">
       <span class="section-icon" aria-hidden="true">{{ section.icon }}</span>
@@ -44,11 +49,12 @@
     </article>
     {% endfor %}
   </section>
+  {% endif %}
   {% endfor %}
 {% else %}
   <section class="blog-section">
     <h2 class="section-heading">
-      <span class="section-icon" aria-hidden="true">✍️</span>
+      <span class="section-icon" aria-hidden="true">&#x270D;&#xFE0F;</span>
       My Writing
     </h2>
     <div class="empty-state">
@@ -74,4 +80,104 @@
   </ul>
 </aside>
 {% endif %}
+</div>{# /main-column #}
+
+{# ====== SIDEBAR — HN + YouTube ====== #}
+{% if sidebar.hn_stories or sidebar.hn_comments or sidebar.watching %}
+<aside class="page-sidebar">
+
+{# --- Hacker News Submissions --- #}
+{% if sidebar.hn_stories %}
+<section class="sidebar-section" id="sidebar-hn-submissions">
+  <h2 class="sidebar-section__heading">
+    <span aria-hidden="true">&#x1F5DE;&#xFE0F;</span> HN Submissions
+  </h2>
+  <ul class="sidebar-list">
+    {% for post in sidebar.hn_stories %}
+    <li class="sidebar-item">
+      <a class="sidebar-item__title" href="{{ post.metadata.article_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
+      <div class="sidebar-item__meta">
+        <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+        &middot; {{ post.metadata.points }} pt{% if post.metadata.points != 1 %}s{% endif %}
+        &middot; <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.num_comments }} comment{% if post.metadata.num_comments != 1 %}s{% endif %}</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if sidebar.hn_submitted_url %}
+  <a class="sidebar-section__view-all" href="{{ sidebar.hn_submitted_url }}" target="_blank" rel="noopener noreferrer nofollow">
+    View all submissions on HN &rarr;
+  </a>
+  {% endif %}
+</section>
+{% endif %}
+
+{# --- Hacker News Comments --- #}
+{% if sidebar.hn_comments %}
+<section class="sidebar-section" id="sidebar-hn-comments">
+  <h2 class="sidebar-section__heading">
+    <span aria-hidden="true">&#x1F4AC;</span> HN Comments
+  </h2>
+  <ul class="sidebar-list">
+    {% for post in sidebar.hn_comments %}
+    <li class="sidebar-item">
+      <a class="sidebar-item__title" href="{{ post.metadata.story_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.metadata.story_title }}</a>
+      <div class="sidebar-item__meta">
+        <a href="{{ post.metadata.hn_url }}" target="_blank" rel="noopener noreferrer nofollow">My comment</a>
+        &middot; <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+      </div>
+      {% if post.excerpt %}
+      <p class="sidebar-item__excerpt">{{ post.excerpt }}</p>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if sidebar.hn_threads_url %}
+  <a class="sidebar-section__view-all" href="{{ sidebar.hn_threads_url }}" target="_blank" rel="noopener noreferrer nofollow">
+    View all comments on HN &rarr;
+  </a>
+  {% endif %}
+</section>
+{% endif %}
+
+{# --- YouTube Videos --- #}
+{% if sidebar.watching %}
+<section class="sidebar-section" id="sidebar-youtube">
+  <h2 class="sidebar-section__heading">
+    <span aria-hidden="true">&#x1F4FA;</span> My Watching
+  </h2>
+  <ul class="sidebar-list sidebar-list--videos">
+    {% for post in sidebar.watching %}
+    <li class="sidebar-item sidebar-item--video">
+      {% if post.avatar_url %}
+      <a class="sidebar-item__thumb-link" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
+        <img class="sidebar-item__thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="120" height="68" loading="lazy" />
+      </a>
+      {% endif %}
+      <div class="sidebar-item__video-info">
+        <a class="sidebar-item__title" href="{{ post.post_url }}">{{ post.title }}</a>
+        <div class="sidebar-item__meta">
+          <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+          {% if post.metadata.source_type == 'channel' %}&middot; <span class="source-badge source-badge--youtube">my channel</span>{% endif %}
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if sidebar.youtube_view_more_urls %}
+  <div class="sidebar-section__view-more-links">
+    {% for vmu in sidebar.youtube_view_more_urls %}
+    <a class="sidebar-section__view-all" href="{{ vmu.url }}" target="_blank" rel="noopener noreferrer nofollow">
+      {% if vmu.source_type == 'channel' %}View my channel on YouTube &rarr;{% else %}View full playlist on YouTube &rarr;{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+</aside>{# /page-sidebar #}
+{% endif %}
+
+</div>{# /page-layout #}
 {% endblock %}

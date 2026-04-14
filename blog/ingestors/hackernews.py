@@ -25,7 +25,7 @@ from blog.utils import extract_excerpt, format_date, format_datetime, sanitize_h
 _HN_ALGOLIA_BASE = "https://hn.algolia.com/api/v1"
 _HN_ITEM_BASE = "https://news.ycombinator.com/item"
 _CONFIG_FILE = "hackernews.txt"
-_MAX_HITS_PER_TYPE = 100
+_MAX_HITS_PER_TYPE = 20
 
 
 # ---------------------------------------------------------------------------

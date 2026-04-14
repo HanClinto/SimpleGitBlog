@@ -52,10 +52,13 @@
           {% if playlist_ids %}
           <br><span class="config-detail">{{ playlist_ids | length }} playlist{{ 's' if playlist_ids | length != 1 else '' }}</span>
           {% endif %}
+          {% if channel_ids %}
+          <br><span class="config-detail">{{ channel_ids | length }} channel{{ 's' if channel_ids | length != 1 else '' }}</span>
+          {% endif %}
         </td>
         <td>My Watching</td>
         <td>
-          {% if playlist_ids %}
+          {% if playlist_ids or channel_ids %}
           <span class="config-status config-status--ok">✅ Configured</span>
           {% else %}
           <span class="config-status config-status--off">— Not configured</span>

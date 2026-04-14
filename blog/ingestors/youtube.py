@@ -1,26 +1,30 @@
 """
-YouTube playlist ingestor for SimpleGitBlog.
+YouTube ingestor for SimpleGitBlog.
 
-Fetches videos from one or more YouTube playlists via YouTube's public Atom/RSS
-feed — **no API key required**.
+Fetches videos from one or more YouTube playlists AND/OR YouTube channels via
+YouTube's public Atom/RSS feeds — **no API key required**.
 
-Feed URL:
-    https://www.youtube.com/feeds/videos.xml?playlist_id={PLAYLIST_ID}
+Feed URLs:
+    Playlist: https://www.youtube.com/feeds/videos.xml?playlist_id={PLAYLIST_ID}
+    Channel:  https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}
 
-Each playlist returns up to the 15 most-recently-added videos. For a personal
-"My Watching" section this is normally plenty; add multiple playlists (e.g. one
-per year) if you need more history.
+Each feed returns up to the 15 most-recently-added videos.
 
 Section: "watching" (My Watching)
 
 Configuration (GitHub Actions repository settings — do NOT hardcode values):
   Variable: YOUTUBE_PLAYLIST_IDS     Comma-separated playlist IDs
+  Variable: YOUTUBE_CHANNEL_IDS      Comma-separated channel IDs (UCxxxxxx)
+                                     or channel handles (@username) — handles
+                                     are resolved automatically.
 
-For local development, you may also place playlist IDs in
-``config/youtube_playlists.txt`` (one per line, # comments supported).
-That file is gitignored so your personal IDs stay off of version control.
+For local development, you may also place IDs in:
+  ``config/youtube_playlists.txt``  (one playlist ID per line)
+  ``config/youtube_channels.txt``   (one channel ID or @handle per line)
+Both files are gitignored so your personal IDs stay off of version control.
 """
 
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -28,7 +32,8 @@ import requests
 
 from blog.utils import extract_excerpt, format_date, format_datetime, plain_text_to_html
 
-_CONFIG_FILE = "youtube_playlists.txt"
+_PLAYLIST_CONFIG_FILE = "youtube_playlists.txt"
+_CHANNEL_CONFIG_FILE = "youtube_channels.txt"
 _RSS_BASE = "https://www.youtube.com/feeds/videos.xml"
 
 # XML namespace map for YouTube Atom feeds
@@ -60,7 +65,7 @@ def load_playlist_ids(config_dir: Path, env_playlist_ids: str | None = None) -> 
             if pid:
                 ids.add(pid)
 
-    config_file = config_dir / _CONFIG_FILE
+    config_file = config_dir / _PLAYLIST_CONFIG_FILE
     if config_file.exists():
         for line in config_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -70,32 +75,102 @@ def load_playlist_ids(config_dir: Path, env_playlist_ids: str | None = None) -> 
     return sorted(ids)
 
 
+def load_channel_ids(config_dir: Path, env_channel_ids: str | None = None) -> list[str]:
+    """
+    Return a deduplicated list of YouTube channel IDs (or @handles) from two sources:
+
+    1. ``env_channel_ids`` — the value of the YOUTUBE_CHANNEL_IDS env var
+       (comma-separated). Accepts ``UCxxxxxx`` channel IDs or ``@handle`` forms.
+    2. ``config/youtube_channels.txt`` — optional local-dev override file
+       (gitignored; never committed with real IDs).
+    """
+    ids: set[str] = set()
+
+    if env_channel_ids:
+        for cid in env_channel_ids.split(","):
+            cid = cid.strip()
+            if cid:
+                ids.add(cid)
+
+    config_file = config_dir / _CHANNEL_CONFIG_FILE
+    if config_file.exists():
+        for line in config_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                ids.add(line)
+
+    return sorted(ids)
+
+
+def _resolve_channel_id(handle_or_id: str) -> str | None:
+    """
+    Resolve a channel handle (``@username``) or channel ID (``UCxxxxxx``) to a
+    confirmed channel ID.
+
+    If the argument looks like a channel ID already (starts with ``UC``), it is
+    returned as-is.  Otherwise the channel page is fetched and the RSS feed link
+    (which contains the channel ID) is extracted from the HTML.
+
+    Returns the channel ID string, or ``None`` if resolution fails.
+    """
+    # Already looks like a channel ID
+    if re.match(r'^UC[A-Za-z0-9_-]{20,}$', handle_or_id):
+        return handle_or_id
+
+    # Build the canonical channel URL
+    if handle_or_id.startswith("@"):
+        channel_url = f"https://www.youtube.com/{handle_or_id}"
+    else:
+        channel_url = f"https://www.youtube.com/@{handle_or_id}"
+
+    try:
+        resp = requests.get(
+            channel_url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; SimpleGitBlog/1.0)"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        print(f"  Warning: could not fetch channel page for {handle_or_id}: {exc}")
+        return None
+
+    # Look for the RSS feed link in the page HTML, which contains the channel_id
+    m = re.search(
+        r'https://www\.youtube\.com/feeds/videos\.xml\?channel_id=(UC[A-Za-z0-9_-]+)',
+        resp.text,
+    )
+    if m:
+        return m.group(1)
+
+    print(f"  Warning: could not extract channel ID from {channel_url}")
+    return None
+
+
 # ---------------------------------------------------------------------------
 # RSS / Atom feed helpers
 # ---------------------------------------------------------------------------
 
-def _fetch_playlist_feed(playlist_id: str) -> list[dict]:
+def _fetch_feed(url: str, label: str) -> list[dict]:
     """
-    Fetch videos from a YouTube playlist Atom feed.
+    Fetch videos from a YouTube Atom feed (playlist or channel).
 
     Returns a list of raw entry dicts extracted from the feed.
     No API key required — the feed is publicly accessible.
     """
-    url = f"{_RSS_BASE}?playlist_id={playlist_id}"
     try:
         response = requests.get(url, timeout=30)
         response.raise_for_status()
     except requests.HTTPError as exc:
-        print(f"  Warning: YouTube RSS error for playlist {playlist_id}: {exc}")
+        print(f"  Warning: YouTube RSS error for {label}: {exc}")
         return []
     except requests.RequestException as exc:
-        print(f"  Warning: YouTube RSS request failed for playlist {playlist_id}: {exc}")
+        print(f"  Warning: YouTube RSS request failed for {label}: {exc}")
         return []
 
     try:
         root = ET.fromstring(response.content)
     except ET.ParseError as exc:
-        print(f"  Warning: could not parse YouTube RSS for playlist {playlist_id}: {exc}")
+        print(f"  Warning: could not parse YouTube RSS for {label}: {exc}")
         return []
 
     entries = []
@@ -136,11 +211,23 @@ def _fetch_playlist_feed(playlist_id: str) -> list[dict]:
     return entries
 
 
+def _fetch_playlist_feed(playlist_id: str) -> list[dict]:
+    """Fetch videos from a YouTube playlist Atom feed."""
+    url = f"{_RSS_BASE}?playlist_id={playlist_id}"
+    return _fetch_feed(url, f"playlist {playlist_id}")
+
+
+def _fetch_channel_feed(channel_id: str) -> list[dict]:
+    """Fetch latest videos from a YouTube channel Atom feed."""
+    url = f"{_RSS_BASE}?channel_id={channel_id}"
+    return _fetch_feed(url, f"channel {channel_id}")
+
+
 # ---------------------------------------------------------------------------
 # Post processing
 # ---------------------------------------------------------------------------
 
-def _process_entry(entry: dict, playlist_id: str) -> dict | None:
+def _process_entry(entry: dict, source_type: str, source_id: str, view_more_url: str) -> dict | None:
     """Convert a raw feed entry dict into the common post schema."""
     video_id = entry.get("video_id", "").strip()
     if not video_id:
@@ -177,9 +264,13 @@ def _process_entry(entry: dict, playlist_id: str) -> dict | None:
         "comments":       [],
         "metadata": {
             "video_id":      video_id,
-            "playlist_id":   playlist_id,
+            "source_type":   source_type,   # "playlist" or "channel"
+            "source_id":     source_id,
+            "view_more_url": view_more_url,
             "channel_name":  author_name,
             "thumbnail_url": thumbnail_url,
+            # Legacy aliases kept for template compatibility
+            "playlist_id":   source_id if source_type == "playlist" else None,
         },
     }
 
@@ -191,17 +282,23 @@ def _process_entry(entry: dict, playlist_id: str) -> dict | None:
 def ingest(
     config_dir: Path,
     env_playlist_ids: str | None = None,
+    env_channel_ids: str | None = None,
 ) -> list[dict]:
     """
-    Fetch YouTube playlist videos via public RSS feeds and return posts in
-    the common schema.  No API key required.
+    Fetch YouTube playlist and channel videos via public RSS feeds and return
+    posts in the common schema.  No API key required.
 
     Playlist IDs come from ``env_playlist_ids`` (YOUTUBE_PLAYLIST_IDS env var)
     and/or the local ``config/youtube_playlists.txt`` file.
+
+    Channel IDs/handles come from ``env_channel_ids`` (YOUTUBE_CHANNEL_IDS env
+    var) and/or the local ``config/youtube_channels.txt`` file.
     """
     playlist_ids = load_playlist_ids(config_dir, env_playlist_ids)
-    if not playlist_ids:
-        print("  No YouTube playlist IDs configured.")
+    channel_ids_raw = load_channel_ids(config_dir, env_channel_ids)
+
+    if not playlist_ids and not channel_ids_raw:
+        print("  No YouTube playlist IDs or channel IDs configured.")
         return []
 
     posts: list[dict] = []
@@ -211,8 +308,33 @@ def ingest(
         print(f"  Fetching playlist RSS: {playlist_id}")
         entries = _fetch_playlist_feed(playlist_id)
         print(f"    {len(entries)} video(s) found.")
+        view_more_url = f"https://www.youtube.com/playlist?list={playlist_id}"
         for entry in entries:
-            post = _process_entry(entry, playlist_id)
+            post = _process_entry(entry, "playlist", playlist_id, view_more_url)
+            if post is None:
+                continue
+            vid = post["metadata"]["video_id"]
+            if vid not in seen_video_ids:
+                seen_video_ids.add(vid)
+                posts.append(post)
+
+    for raw_id in channel_ids_raw:
+        print(f"  Resolving YouTube channel: {raw_id}")
+        channel_id = _resolve_channel_id(raw_id)
+        if not channel_id:
+            print(f"    Skipping — could not resolve channel ID for: {raw_id}")
+            continue
+        print(f"  Fetching channel RSS: {channel_id}")
+        entries = _fetch_channel_feed(channel_id)
+        print(f"    {len(entries)} video(s) found.")
+        # Build a human-friendly "view more" URL using the original handle if given
+        if raw_id.startswith("@") or not raw_id.startswith("UC"):
+            handle = raw_id if raw_id.startswith("@") else f"@{raw_id}"
+            view_more_url = f"https://www.youtube.com/{handle}/videos"
+        else:
+            view_more_url = f"https://www.youtube.com/channel/{channel_id}/videos"
+        for entry in entries:
+            post = _process_entry(entry, "channel", channel_id, view_more_url)
             if post is None:
                 continue
             vid = post["metadata"]["video_id"]

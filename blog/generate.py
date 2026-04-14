@@ -102,6 +102,7 @@ def generate_site(
     token: str | None,
     output_dir: Path,
     youtube_playlist_ids: str | None = None,
+    youtube_channel_ids: str | None = None,
     hn_usernames: list[str] | None = None,
 ) -> None:
     _start = time.monotonic()
@@ -118,15 +119,16 @@ def generate_site(
     writing_posts = github_issues.ingest(repo, token, CONFIG_DIR)
     print(f"  {len(writing_posts)} post(s) ingested from GitHub Issues.")
 
-    # --- YouTube playlists (My Watching) — uses free public RSS feeds, no API key ---
+    # --- YouTube playlists & channels (My Watching) — uses free public RSS feeds, no API key ---
     watching_posts: list[dict] = []
     playlist_ids = youtube.load_playlist_ids(CONFIG_DIR, youtube_playlist_ids)
-    if playlist_ids:
-        print("Fetching YouTube playlists (My Watching)…")
-        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids)
+    channel_ids = youtube.load_channel_ids(CONFIG_DIR, youtube_channel_ids)
+    if playlist_ids or channel_ids:
+        print("Fetching YouTube content (My Watching)…")
+        watching_posts = youtube.ingest(CONFIG_DIR, youtube_playlist_ids, youtube_channel_ids)
         print(f"  {len(watching_posts)} post(s) ingested from YouTube.")
     else:
-        print("YOUTUBE_PLAYLIST_IDS not configured — skipping YouTube ingestor.")
+        print("YOUTUBE_PLAYLIST_IDS / YOUTUBE_CHANNEL_IDS not configured — skipping YouTube ingestor.")
 
     # --- Hacker News (My Reading) — requires HN_USERNAME ---
     reading_posts: list[dict] = []
@@ -156,6 +158,45 @@ def generate_site(
         key=lambda p: p["created_at"],
         reverse=True,
     )
+
+    # --- Sidebar data ---
+    # Split HN posts into stories vs. comments for separate sidebar panels
+    _SIDEBAR_LIMIT = 5
+    hn_stories  = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "story"]
+    hn_comments = [p for p in reading_posts if p.get("metadata", {}).get("hn_type") == "comment"]
+
+    # Build per-username HN profile links (use first username if multiple)
+    _hn_user = (hn_usernames or [None])[0]
+    hn_submitted_url = (
+        f"https://news.ycombinator.com/submitted?id={_hn_user}" if _hn_user else None
+    )
+    hn_threads_url = (
+        f"https://news.ycombinator.com/threads?id={_hn_user}" if _hn_user else None
+    )
+    hn_profile_url = (
+        f"https://news.ycombinator.com/user?id={_hn_user}" if _hn_user else None
+    )
+
+    # Collect unique YouTube "view more" URLs (one per playlist/channel)
+    seen_view_more: set[str] = set()
+    youtube_view_more_urls: list[dict] = []
+    for p in watching_posts:
+        vmu = p.get("metadata", {}).get("view_more_url")
+        stype = p.get("metadata", {}).get("source_type", "playlist")
+        if vmu and vmu not in seen_view_more:
+            seen_view_more.add(vmu)
+            youtube_view_more_urls.append({"url": vmu, "source_type": stype})
+
+    sidebar = {
+        "hn_stories":       hn_stories[:_SIDEBAR_LIMIT],
+        "hn_comments":      hn_comments[:_SIDEBAR_LIMIT],
+        "hn_submitted_url": hn_submitted_url,
+        "hn_threads_url":   hn_threads_url,
+        "hn_profile_url":   hn_profile_url,
+        "hn_username":      _hn_user,
+        "watching":         watching_posts[:_SIDEBAR_LIMIT],
+        "youtube_view_more_urls": youtube_view_more_urls,
+    }
 
     # --- Jinja2 setup ---
     env = Environment(
@@ -204,7 +245,7 @@ def generate_site(
 
     # Render index page
     index_tmpl = env.get_template("index.html")
-    index_html = index_tmpl.render(sections=active_sections)
+    index_html = index_tmpl.render(sections=active_sections, sidebar=sidebar)
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")
     print("Wrote index.html")
 
@@ -235,6 +276,7 @@ def generate_site(
     config_ctx = {
         "hn_usernames": hn_usernames or [],
         "playlist_ids": playlist_ids,
+        "channel_ids": channel_ids,
         "hidden_labels": sorted(hidden_labels),
         "blocked_user_count": len(blocked_users),
         "writing_post_count": len(writing_posts),
@@ -270,6 +312,7 @@ def main() -> None:
     output_dir = Path(os.environ.get("OUTPUT_DIR", "_site")).resolve()
 
     youtube_playlist_ids = os.environ.get("YOUTUBE_PLAYLIST_IDS") or None
+    youtube_channel_ids = os.environ.get("YOUTUBE_CHANNEL_IDS") or None
 
     # HN usernames: from HN_USERNAME env var and/or local config file (gitignored)
     hn_usernames = hackernews.load_usernames(CONFIG_DIR, os.environ.get("HN_USERNAME") or None)
@@ -279,6 +322,7 @@ def main() -> None:
         token=token,
         output_dir=output_dir,
         youtube_playlist_ids=youtube_playlist_ids,
+        youtube_channel_ids=youtube_channel_ids,
         hn_usernames=hn_usernames or None,
     )
 
