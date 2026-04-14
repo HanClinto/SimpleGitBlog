@@ -1,8 +1,8 @@
 A simple blog, powered by Github.
 
-Want a blog? Fork this repo, no configuration needed. Write posts as [Issues](https://github.com/HanClinto/SimpleGitBlog/issues). The project picks them up. Instant blog for you. Minimal configuration. Transparent. Everything lives in Github.
+Want a blog? [Fork this repo](https://github.com/HanClinto/SimpleGitBlog/fork), no configuration needed. Write posts as [Issues](https://github.com/HanClinto/SimpleGitBlog/issues). The project picks them up and formats them for your website. Instant blog for you. Minimal configuration. Transparent. Everything lives in Github.
 
-I don't know if anyone else would ever want to use my vibe-coded slop, but in case you do, it's batteries-included.
+I don't know if anyone else would ever want to use my AI-coded slop when they can vibe their own, but in case you do, it's batteries-included.
 
 Because posts are issues (not code), they aren't copied when you fork the repository. Discussions from users are [comments on those issues](https://github.com/HanClinto/SimpleGitBlog/issues/2#issuecomment-4240186490). So you can fork the repo and you get all of my code with none of my content. No database to configure -- it uses the Github project itself as the data source. Simple, clean.
 
@@ -23,4 +23,8 @@ Need more config? There's some options for that. Ask Copilot to help you figure 
 
 ## Background
 
-Vibe-coded in an evening because I had an idea that I could drive a dynamic website via Github issues and comments, and power everything through Github Actions.
+Vibe-coded in an evening because I had an idea that I could maybe drive a dynamic website via Github issues and comments, and power everything through Github Actions.
+
+Turns out I was right.
+
+It worked pretty well. Not sure how long-lived it will be, but as a proof-of-concept I'm pretty happy with it.
