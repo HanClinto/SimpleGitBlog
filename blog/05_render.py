@@ -244,12 +244,20 @@ def _attach_series_metadata(posts: list[dict]) -> None:
         if 1 in existing_parts:
             continue
         intro_prefix = f"{series_name}:"
-        for post in posts:
-            title = post.get("title", "")
-            if title.startswith(intro_prefix) and "_series_part" not in post:
-                post["_series_part"] = 1
-                series_posts.append(post)
-                break
+        intro_candidates = [
+            post for post in posts
+            if post.get("title", "").startswith(intro_prefix) and "_series_part" not in post
+        ]
+        if intro_candidates:
+            # There may be later follow-up posts that share the same title prefix
+            # (for example "CollectorVision: Card Accuracy vs. Edition Accuracy").
+            # Treat the earliest matching post as the actual series intro.
+            intro = sorted(
+                intro_candidates,
+                key=lambda p: (p.get("created_at", ""), p.get("metadata", {}).get("number", 0)),
+            )[0]
+            intro["_series_part"] = 1
+            series_posts.append(intro)
 
     for series_name, series_posts in series_by_name.items():
         if len(series_posts) < 2:
