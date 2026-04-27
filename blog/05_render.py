@@ -23,6 +23,8 @@ import sys
 import time
 import unicodedata
 import urllib.parse
+from html import escape as html_escape
+from html.parser import HTMLParser
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -98,6 +100,177 @@ def _label_slug(label: str) -> str:
     normalized = unicodedata.normalize("NFKD", label).encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
     return slug or urllib.parse.quote(label, safe="")
+
+
+# ---------------------------------------------------------------------------
+# Post link helpers
+# ---------------------------------------------------------------------------
+
+_ISSUE_REF_RE = re.compile(r"(?<![\w&])#(\d+)\b")
+
+
+def _github_issue_number_from_url(url: str, repo: str) -> int | None:
+    """Return an issue number for same-repo GitHub issue URLs, otherwise None."""
+    parsed = urllib.parse.urlparse(url.strip())
+    if parsed.scheme not in {"http", "https"}:
+        return None
+    if parsed.netloc.lower() != "github.com":
+        return None
+    path_parts = [p for p in parsed.path.split("/") if p]
+    repo_parts = repo.split("/", 1)
+    if len(path_parts) < 4 or len(repo_parts) != 2:
+        return None
+    if path_parts[0].lower() != repo_parts[0].lower() or path_parts[1].lower() != repo_parts[1].lower():
+        return None
+    if path_parts[2] != "issues":
+        return None
+    try:
+        return int(path_parts[3])
+    except ValueError:
+        return None
+
+
+class _IssueLinkRewriter(HTMLParser):
+    """Rewrite same-repo issue links and plain #123 refs inside sanitized HTML."""
+
+    _SKIP_TEXT_TAGS = {"a", "code", "pre"}
+
+    def __init__(self, issue_url_map: dict[int, str], repo: str):
+        super().__init__(convert_charrefs=False)
+        self.issue_url_map = issue_url_map
+        self.repo = repo
+        self.parts: list[str] = []
+        self._skip_text_depth = 0
+
+    def _rewrite_href(self, href: str) -> str:
+        issue_number = _github_issue_number_from_url(href, self.repo)
+        if issue_number is None:
+            return href
+        local_url = self.issue_url_map.get(issue_number)
+        if not local_url:
+            return href
+        parsed = urllib.parse.urlparse(href)
+        suffix = f"#{parsed.fragment}" if parsed.fragment else ""
+        return local_url + suffix
+
+    def _format_start_tag(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool = False) -> str:
+        attr_parts = []
+        for name, value in attrs:
+            if tag == "a" and name == "href" and value is not None:
+                value = self._rewrite_href(value)
+            if value is None:
+                attr_parts.append(name)
+            else:
+                attr_parts.append(f'{name}="{html_escape(value, quote=True)}"')
+        attrs_str = (" " + " ".join(attr_parts)) if attr_parts else ""
+        return f"<{tag}{attrs_str}{' /' if closed else ''}>"
+
+    def _link_issue_refs(self, text: str) -> str:
+        def repl(match: re.Match) -> str:
+            issue_number = int(match.group(1))
+            local_url = self.issue_url_map.get(issue_number)
+            if not local_url:
+                return html_escape(match.group(0), quote=False)
+            ref_text = match.group(0)
+            href = html_escape(local_url, quote=True)
+            label = html_escape(ref_text)
+            return f'<a href="{href}" rel="nofollow noopener noreferrer">{label}</a>'
+
+        result: list[str] = []
+        last = 0
+        for match in _ISSUE_REF_RE.finditer(text):
+            result.append(html_escape(text[last:match.start()], quote=False))
+            result.append(repl(match))
+            last = match.end()
+        result.append(html_escape(text[last:], quote=False))
+        return "".join(result)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self._SKIP_TEXT_TAGS:
+            self._skip_text_depth += 1
+        self.parts.append(self._format_start_tag(tag, attrs))
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.parts.append(self._format_start_tag(tag, attrs, closed=True))
+
+    def handle_endtag(self, tag: str) -> None:
+        self.parts.append(f"</{tag}>")
+        if tag in self._SKIP_TEXT_TAGS and self._skip_text_depth:
+            self._skip_text_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_text_depth:
+            self.parts.append(html_escape(data, quote=False))
+        else:
+            self.parts.append(self._link_issue_refs(data))
+
+    def handle_entityref(self, name: str) -> None:
+        self.parts.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self.parts.append(f"&#{name};")
+
+
+def _rewrite_issue_links(html: str, issue_url_map: dict[int, str], repo: str) -> str:
+    if not html or not issue_url_map:
+        return html
+    parser = _IssueLinkRewriter(issue_url_map, repo)
+    parser.feed(html)
+    parser.close()
+    return "".join(parser.parts)
+
+
+def _series_info_from_title(title: str) -> tuple[str, int] | None:
+    part_match = re.match(r"^(.+?)\s+Part\s+(\d+)\s*:", title, flags=re.IGNORECASE)
+    if part_match:
+        return part_match.group(1).strip(), int(part_match.group(2))
+    return None
+
+
+def _attach_series_metadata(posts: list[dict]) -> None:
+    """Attach generated previous/next + table-of-contents metadata for obvious post series."""
+    series_by_name: dict[str, list[dict]] = {}
+    for post in posts:
+        info = _series_info_from_title(post.get("title", ""))
+        if not info:
+            continue
+        series_name, part = info
+        post["_series_part"] = part
+        series_by_name.setdefault(series_name, []).append(post)
+
+    # Add an introductory post as Part 1 when it uses "SeriesName: ..." and no explicit Part 1 exists.
+    for series_name, series_posts in list(series_by_name.items()):
+        existing_parts = {p["_series_part"] for p in series_posts}
+        if 1 in existing_parts:
+            continue
+        intro_prefix = f"{series_name}:"
+        for post in posts:
+            title = post.get("title", "")
+            if title.startswith(intro_prefix) and "_series_part" not in post:
+                post["_series_part"] = 1
+                series_posts.append(post)
+                break
+
+    for series_name, series_posts in series_by_name.items():
+        if len(series_posts) < 2:
+            continue
+        ordered = sorted(series_posts, key=lambda p: (p["_series_part"], p.get("created_at", "")))
+        toc = [
+            {
+                "part": p["_series_part"],
+                "title": p.get("title", ""),
+                "url": p.get("post_url", ""),
+            }
+            for p in ordered
+        ]
+        for index, post in enumerate(ordered):
+            post["series"] = {
+                "name": series_name,
+                "part": post["_series_part"],
+                "posts": [dict(item, is_current=(item["url"] == post.get("post_url", ""))) for item in toc],
+                "prev": toc[index - 1] if index > 0 else None,
+                "next": toc[index + 1] if index + 1 < len(toc) else None,
+            }
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +467,18 @@ def render(
     for post in all_posts:
         if post["post_url"].startswith("/posts/"):
             post["post_url"] = base_path + post["post_url"].lstrip("/")
+
+    issue_url_map = {
+        int(post["metadata"]["number"]): post["post_url"]
+        for post in all_posts
+        if post.get("source") == "github" and post.get("metadata", {}).get("number") is not None
+    }
+    for post in all_posts:
+        post["body_html"] = _rewrite_issue_links(post.get("body_html", ""), issue_url_map, repo)
+        for comment in post.get("comments", []):
+            comment["body_html"] = _rewrite_issue_links(comment.get("body_html", ""), issue_url_map, repo)
+
+    _attach_series_metadata(all_posts)
 
     total_elapsed = sum(s["elapsed"] for s in pipeline_stages)
     jinja_env.globals.update({

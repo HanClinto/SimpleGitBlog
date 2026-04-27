@@ -23,7 +23,7 @@
       {% if post.avatar_url and post.source != 'youtube' %}
       <img class="avatar" src="{{ post.avatar_url }}" alt="{{ post.author }}" width="36" height="36" />
       {% endif %}
-      <span>
+      <span class="post__byline">
         By <a href="{{ post.author_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.author }}</a>
         &mdash;
         {% if post.source == 'github' %}
@@ -70,6 +70,36 @@
   <div class="post__body prose">
     {{ post.body_html | safe }}
   </div>
+  {% endif %}
+
+  {% if post.series %}
+  <nav class="series-nav" aria-label="{{ post.series.name }} series navigation">
+    <div class="series-nav__header">
+      <span class="series-nav__label">Series</span>
+      <strong>{{ post.series.name }}</strong>
+    </div>
+    <ol class="series-nav__list">
+      {% for series_post in post.series.posts %}
+      <li class="series-nav__item{% if series_post.is_current %} series-nav__item--current{% endif %}">
+        {% if series_post.is_current %}
+        <span aria-current="page">{{ series_post.title }}</span>
+        {% else %}
+        <a href="{{ series_post.url }}">{{ series_post.title }}</a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="series-nav__pager">
+      {% if post.series.prev %}
+      <a href="{{ post.series.prev.url }}">&larr; Part {{ post.series.prev.part }}</a>
+      {% else %}
+      <span></span>
+      {% endif %}
+      {% if post.series.next %}
+      <a href="{{ post.series.next.url }}">Part {{ post.series.next.part }} &rarr;</a>
+      {% endif %}
+    </div>
+  </nav>
   {% endif %}
 
   {% if post.reactions %}

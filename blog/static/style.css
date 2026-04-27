@@ -256,8 +256,16 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
   gap: 0.5rem;
   font-size: 0.88rem;
   color: #64748b;
+  flex-wrap: wrap;
 }
 .post__meta a { color: #475569; }
+
+.post__byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
 
 .post__date-link { color: #94a3b8; text-decoration: none; }
 .post__date-link:hover { color: #475569; text-decoration: underline; }
@@ -369,6 +377,66 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
   color: #0969da;
   word-break: break-word;
 }
+
+/* --- Series navigation ------------------------------------ */
+.series-nav {
+  margin: 2rem 0 1rem;
+  padding: 1rem 1.15rem;
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+}
+
+.series-nav__header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #111;
+}
+
+.series-nav__label {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.series-nav__list {
+  margin: 0;
+  padding-left: 1.35rem;
+  font-size: 0.9rem;
+}
+
+.series-nav__item + .series-nav__item { margin-top: 0.25rem; }
+
+.series-nav__item--current {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.series-nav__pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.series-nav__pager a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.series-nav__pager a:hover { text-decoration: underline; }
 
 /* --- Post actions ----------------------------------------- */
 .post__actions {

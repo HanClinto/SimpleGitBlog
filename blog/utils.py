@@ -110,6 +110,28 @@ def sanitize_html(raw_html: str) -> str:
     return cleaned
 
 
+def _linkify_callback(attrs: dict, new: bool = False) -> dict:
+    """Normalize attributes on links created or touched by bleach.linkify."""
+    href_key = (None, "href")
+    href = attrs.get(href_key, "")
+    if not _is_safe_url(href):
+        return None
+    attrs[(None, "rel")] = "nofollow noopener noreferrer"
+    return attrs
+
+
+def linkify_urls(html: str) -> str:
+    """Turn bare URLs into safe links without touching code blocks or existing links."""
+    if not html:
+        return ""
+    return bleach.linkify(
+        html,
+        callbacks=[_linkify_callback],
+        skip_tags=["a", "code", "pre"],
+        parse_email=False,
+    )
+
+
 # ---------------------------------------------------------------------------
 # YouTube URL auto-embedding
 # ---------------------------------------------------------------------------
@@ -209,7 +231,8 @@ def markdown_to_safe_html(text: str) -> str:
     md = markdown.Markdown(extensions=MD_EXTENSIONS)
     raw_html = md.convert(text)
     sanitized = sanitize_html(raw_html)
-    return embed_youtube_urls(sanitized)
+    linked = linkify_urls(sanitized)
+    return embed_youtube_urls(linked)
 
 
 def plain_text_to_html(text: str) -> str:
@@ -220,7 +243,7 @@ def plain_text_to_html(text: str) -> str:
     paragraphs = re.split(r'\n{2,}', escaped)
     parts = ['<p>' + p.replace('\n', '<br>') + '</p>'
              for p in paragraphs if p.strip()]
-    return '\n'.join(parts)
+    return linkify_urls('\n'.join(parts))
 
 
 # ---------------------------------------------------------------------------
