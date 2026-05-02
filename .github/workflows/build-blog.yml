@@ -28,6 +28,23 @@ jobs:
           python-version: '3.11'
       - run: pip install -r requirements.txt
 
+      - name: Detect GitHub Pages domain
+        id: pages-domain
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          repo_name="${REPO##*/}"
+          cname="$(gh api "repos/${REPO}/pages" --jq '.cname // ""' 2>/dev/null || true)"
+
+          if [ -n "$cname" ]; then
+            echo "base_path=/" >> "$GITHUB_OUTPUT"
+            echo "custom_domain=$cname" >> "$GITHUB_OUTPUT"
+          else
+            echo "base_path=/${repo_name}/" >> "$GITHUB_OUTPUT"
+            echo "custom_domain=" >> "$GITHUB_OUTPUT"
+          fi
+
       # ------------------------------------------------------------------
       # Fetch stages — each runs independently.
       # continue-on-error: true means a transient API failure (e.g. YouTube
@@ -74,9 +91,14 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
+          BASE_PATH: ${{ steps.pages-domain.outputs.base_path }}
           YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
           FEED_SOURCES: ${{ vars.FEED_SOURCES }}
           BLOG_CONFIGURED: ${{ vars.BLOG_CONFIGURED }}
+
+      - name: Add custom domain
+        if: ${{ steps.pages-domain.outputs.custom_domain != '' }}
+        run: printf '%s\n' '${{ steps.pages-domain.outputs.custom_domain }}' > _site/CNAME
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
