@@ -36,6 +36,7 @@ def main() -> None:
 
     playlist_ids = youtube.load_playlist_ids(env_playlist_ids)
     channel_ids = youtube.load_channel_ids(effective_channel_ids_str)
+    previous_cache = read_cache("youtube")
 
     if not playlist_ids and not channel_ids:
         print(
@@ -57,6 +58,12 @@ def main() -> None:
     print("Fetching YouTube content (My Watching)…")
     start = time.monotonic()
     posts, warnings = youtube.ingest(env_playlist_ids, effective_channel_ids_str)
+    if not posts and warnings and previous_cache.get("posts"):
+        posts = previous_cache.get("posts", [])
+        warnings.append(
+            "Warning: reusing previously cached YouTube posts because the current"
+            " YouTube RSS fetch returned no posts."
+        )
     elapsed = time.monotonic() - start
 
     print(f"  {len(posts)} post(s) ingested from YouTube.")

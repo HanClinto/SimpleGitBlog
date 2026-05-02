@@ -28,6 +28,14 @@ jobs:
           python-version: '3.11'
       - run: pip install -r requirements.txt
 
+      - name: Restore YouTube cache
+        uses: actions/cache@v4
+        with:
+          path: _cache/youtube.json
+          key: youtube-cache-${{ github.run_id }}
+          restore-keys: |
+            youtube-cache-
+
       - name: Detect GitHub Pages domain
         id: pages-domain
         env:
