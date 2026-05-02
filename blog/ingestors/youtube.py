@@ -267,6 +267,7 @@ def _process_entry(entry: dict, source_type: str, source_id: str, view_more_url:
 def ingest(
     env_playlist_ids: str | None = None,
     env_channel_ids: str | None = None,
+    previous_posts: list[dict] | None = None,
 ) -> tuple[list[dict], list[str]]:
     """
     Fetch YouTube playlist and channel videos via public RSS feeds and return
@@ -286,30 +287,72 @@ def ingest(
 
     posts: list[dict] = []
     seen_video_ids: set[str] = set()
+    previous_posts = previous_posts or []
+
+    def add_post(post: dict) -> None:
+        vid = post.get("metadata", {}).get("video_id")
+        if vid and vid not in seen_video_ids:
+            seen_video_ids.add(vid)
+            posts.append(post)
+
+    def reuse_cached_posts(source_type: str, source_id: str, label: str) -> None:
+        cached = [
+            post for post in previous_posts
+            if post.get("metadata", {}).get("source_type") == source_type
+            and post.get("metadata", {}).get("source_id") == source_id
+        ]
+        if not cached:
+            return
+        for post in cached:
+            add_post(post)
+        msg = f"Warning: reusing {len(cached)} cached YouTube post(s) for {label}."
+        print(f"  {msg}")
+        warnings.append(msg)
 
     for playlist_id in playlist_ids:
         print(f"  Fetching playlist RSS: {playlist_id}")
+        warning_count = len(warnings)
         entries = _fetch_playlist_feed(playlist_id, warnings=warnings)
         print(f"    {len(entries)} video(s) found.")
+        if not entries and len(warnings) > warning_count:
+            reuse_cached_posts("playlist", playlist_id, f"playlist {playlist_id}")
+            continue
         view_more_url = f"https://www.youtube.com/playlist?list={playlist_id}"
         for entry in entries:
             post = _process_entry(entry, "playlist", playlist_id, view_more_url)
             if post is None:
                 continue
-            vid = post["metadata"]["video_id"]
-            if vid not in seen_video_ids:
-                seen_video_ids.add(vid)
-                posts.append(post)
+            add_post(post)
 
     for raw_id in channel_ids_raw:
         print(f"  Resolving YouTube channel: {raw_id}")
+        warning_count = len(warnings)
         channel_id = _resolve_channel_id(raw_id, warnings=warnings)
         if not channel_id:
             print(f"    Skipping — could not resolve channel ID for: {raw_id}")
+            if len(warnings) > warning_count:
+                cached_channel_posts = [
+                    post for post in previous_posts
+                    if post.get("metadata", {}).get("source_type") == "channel"
+                ]
+                if len(channel_ids_raw) == 1:
+                    for post in cached_channel_posts:
+                        add_post(post)
+                    if cached_channel_posts:
+                        msg = (
+                            "Warning: reusing cached YouTube channel posts because"
+                            f" channel resolution failed for {raw_id}."
+                        )
+                        print(f"  {msg}")
+                        warnings.append(msg)
             continue
         print(f"  Fetching channel RSS: {channel_id}")
+        warning_count = len(warnings)
         entries = _fetch_channel_feed(channel_id, warnings=warnings)
         print(f"    {len(entries)} video(s) found.")
+        if not entries and len(warnings) > warning_count:
+            reuse_cached_posts("channel", channel_id, f"channel {channel_id}")
+            continue
         # Build a human-friendly "view more" URL using the original handle if given
         if raw_id.startswith("@"):
             view_more_url = f"https://www.youtube.com/{raw_id}/videos"
@@ -319,10 +362,7 @@ def ingest(
             post = _process_entry(entry, "channel", channel_id, view_more_url)
             if post is None:
                 continue
-            vid = post["metadata"]["video_id"]
-            if vid not in seen_video_ids:
-                seen_video_ids.add(vid)
-                posts.append(post)
+            add_post(post)
 
     posts.sort(key=lambda p: p["created_at"], reverse=True)
     return posts, warnings

@@ -57,7 +57,11 @@ def main() -> None:
 
     print("Fetching YouTube content (My Watching)…")
     start = time.monotonic()
-    posts, warnings = youtube.ingest(env_playlist_ids, effective_channel_ids_str)
+    posts, warnings = youtube.ingest(
+        env_playlist_ids,
+        effective_channel_ids_str,
+        previous_posts=previous_cache.get("posts", []),
+    )
     if not posts and warnings and previous_cache.get("posts"):
         posts = previous_cache.get("posts", [])
         warnings.append(
