@@ -2,9 +2,10 @@
 Stage 05 — Render static HTML and write output to _site/.
 
 Reads:  _cache/profile.json
-        _cache/issues.json
-        _cache/youtube.json
-        _cache/hn.json
+    _cache/issues.json
+    _cache/youtube.json
+    _cache/hn.json
+    _cache/contributions.json
 Writes: _site/   (full static site, ready to upload as a GitHub Pages artifact)
 
 Environment variables consumed:
@@ -325,6 +326,7 @@ def render(
     issues_cache  = read_cache("issues")
     youtube_cache = read_cache("youtube")
     hn_cache      = read_cache("hn")
+    contributions_cache = read_cache("contributions")
 
     # --- Reconstruct typed objects ---
     owner_profile = _reconstruct_profile(profile_cache.get("data"))
@@ -332,6 +334,7 @@ def render(
     writing_posts: list[dict] = issues_cache.get("posts", [])
     watching_posts: list[dict] = youtube_cache.get("posts", [])
     reading_posts: list[dict]  = hn_cache.get("posts", [])
+    contribution_posts: list[dict] = contributions_cache.get("posts", [])
 
     channel_posts  = [p for p in watching_posts if p.get("metadata", {}).get("source_type") == "channel"]
     playlist_posts = [p for p in watching_posts if p.get("metadata", {}).get("source_type") == "playlist"]
@@ -356,12 +359,14 @@ def render(
         "issues":  "GitHub Issues",
         "youtube": "YouTube",
         "hn":      "Hacker News",
+        "contributions": "GitHub Contributions",
     }
     pipeline_stages: list[dict] = []
     all_warnings: list[str] = []
-    for key in ("profile", "issues", "youtube", "hn"):
+    for key in ("profile", "issues", "youtube", "hn", "contributions"):
         cache = {"profile": profile_cache, "issues": issues_cache,
-                 "youtube": youtube_cache, "hn": hn_cache}[key]
+                 "youtube": youtube_cache, "hn": hn_cache,
+                 "contributions": contributions_cache}[key]
         stage_warnings = cache.get("warnings", [])
         all_warnings.extend(stage_warnings)
         pipeline_stages.append({
@@ -421,6 +426,20 @@ def render(
 
     # --- Sidebar panels ---
     sidebar_panels: list[dict] = []
+    if contribution_posts:
+        sidebar_panels.append({
+            "type": "contributions",
+            "title": "Merged Elsewhere",
+            "icon": "🔀",
+            "posts": contribution_posts[:5],
+            "view_all_url": (
+                "https://github.com/search?"
+                + urllib.parse.urlencode({
+                    "q": f"author:{repo_owner} is:pr is:merged -user:{repo_owner}",
+                    "type": "pullrequests",
+                })
+            ),
+        })
     for key in _ALL_SOURCES:
         if key in feed_sources:
             continue

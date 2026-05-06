@@ -7,7 +7,7 @@ on:
   issue_comment:
     types: [created, edited, deleted]
   schedule:
-    - cron: '0 */6 * * *'  # every 6 hours
+    - cron: '0 5,17 * * *'  # twice daily
   workflow_dispatch:  # manual trigger
 
 permissions:
@@ -88,6 +88,15 @@ jobs:
         run: python blog/04_fetch_hn.py
         env:
           HN_USERNAME: ${{ vars.HN_USERNAME }}
+
+      - name: "Stage 06 — Fetch GitHub Contributions"
+        continue-on-error: true
+        run: python blog/06_fetch_contributions.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_CONTRIBUTIONS_USER: ${{ vars.GITHUB_CONTRIBUTIONS_USER }}
+          GITHUB_CONTRIBUTIONS_LIMIT: ${{ vars.GITHUB_CONTRIBUTIONS_LIMIT }}
 
       # ------------------------------------------------------------------
       # Render — reads all four cache files and writes _site/.

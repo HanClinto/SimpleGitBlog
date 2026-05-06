@@ -178,6 +178,20 @@
     {% endfor %}
   </ul>
 
+  {# --- GitHub Contributions --- #}
+  {% elif panel.type == 'contributions' %}
+  <ul class="sidebar-list">
+    {% for post in panel.posts %}
+    <li class="sidebar-item">
+      <a class="sidebar-item__title" href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
+      <div class="sidebar-item__meta">
+        <span>{{ post.metadata.repository }}</span>
+        &middot; <time datetime="{{ post.created_at_iso }}">{{ post.created_at_fmt }}</time>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+
   {# --- Generic (writing, etc.) --- #}
   {% else %}
   <ul class="sidebar-list">
