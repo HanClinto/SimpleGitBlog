@@ -221,6 +221,31 @@ def _rewrite_issue_links(html: str, issue_url_map: dict[int, str], repo: str) ->
     return "".join(parser.parts)
 
 
+class _FirstImageParser(HTMLParser):
+    """Find the first image source in sanitized post HTML."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.src: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self.src or tag != "img":
+            return
+        for name, value in attrs:
+            if name == "src" and value:
+                self.src = value
+                return
+
+
+def _first_image_src(html: str) -> str | None:
+    if not html or "<img" not in html:
+        return None
+    parser = _FirstImageParser()
+    parser.feed(html)
+    parser.close()
+    return parser.src
+
+
 def _series_info_from_title(title: str) -> tuple[str, int] | None:
     part_match = re.match(r"^(.+?)\s+Part\s+(\d+)\s*:", title, flags=re.IGNORECASE)
     if part_match:
@@ -504,6 +529,12 @@ def render(
         post["body_html"] = _rewrite_issue_links(post.get("body_html", ""), issue_url_map, repo)
         for comment in post.get("comments", []):
             comment["body_html"] = _rewrite_issue_links(comment.get("body_html", ""), issue_url_map, repo)
+
+    for post in all_posts:
+        if post.get("source") == "youtube" and post.get("avatar_url"):
+            post["preview_image_url"] = post["avatar_url"]
+        else:
+            post["preview_image_url"] = _first_image_src(post.get("body_html", ""))
 
     _attach_series_metadata(all_posts)
 

@@ -201,6 +201,22 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
 }
 .post-card__meta a { color: #475569; }
 
+.post-card__preview-link {
+  display: block;
+  width: min(100%, 320px);
+  margin: 0 0 0.9rem;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.post-card__preview-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
 .post-card__excerpt {
   margin: 0 0 0.9rem;
   color: #374151;

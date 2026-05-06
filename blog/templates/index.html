@@ -23,6 +23,11 @@
   <h3 class="post-card__title">
     <a href="{{ post.post_url }}">{{ post.title }}</a>
   </h3>
+  {% if post.preview_image_url %}
+  <a class="post-card__preview-link" href="{{ post.post_url }}">
+    <img class="post-card__preview-image" src="{{ post.preview_image_url }}" alt="{{ post.title }}" loading="lazy" />
+  </a>
+  {% endif %}
   {% if post.excerpt %}
   <p class="post-card__excerpt">{{ post.excerpt }}</p>
   {% endif %}
@@ -45,9 +50,9 @@
   <h3 class="post-card__title">
     <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ post.title }}</a>
   </h3>
-  {% if post.avatar_url %}
-  <a href="{{ post.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
-    <img class="post-card__video-thumb" src="{{ post.avatar_url }}" alt="{{ post.title }}" width="320" height="180" loading="lazy" />
+  {% if post.preview_image_url %}
+  <a class="post-card__preview-link" href="{{ post.post_url }}">
+    <img class="post-card__preview-image" src="{{ post.preview_image_url }}" alt="{{ post.title }}" loading="lazy" />
   </a>
   {% endif %}
   {% if post.excerpt %}
@@ -73,6 +78,11 @@
     <a href="{{ post.post_url }}">{{ post.title }}</a>
     {% endif %}
   </h3>
+  {% if post.preview_image_url %}
+  <a class="post-card__preview-link" href="{{ post.post_url }}">
+    <img class="post-card__preview-image" src="{{ post.preview_image_url }}" alt="{{ post.title }}" loading="lazy" />
+  </a>
+  {% endif %}
   {% if post.excerpt %}
   <p class="post-card__excerpt">{{ post.excerpt }}</p>
   {% endif %}
