@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}{{ repo_name }}{% endblock %}</title>
+  <title>{% block title %}{{ site_title }}{% endblock %}</title>
   {% block meta %}
-  <meta name="description" content="{{ repo_name }} — a personal blog powered by SimpleGitBlog." />
-  <meta property="og:title" content="{{ repo_name }}" />
+  <meta name="description" content="{{ site_description }}" />
+  <meta property="og:title" content="{{ site_title }}" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ base_path }}" />
+  {% if site_avatar_url %}
+  <meta property="og:image" content="{{ site_avatar_url }}" />
+  {% endif %}
   {% endblock %}
   <link rel="icon" type="image/svg+xml" href="{{ base_path }}static/favicon.svg" />
   <link rel="stylesheet" href="{{ base_path }}static/style.css" />
@@ -16,7 +19,17 @@
 <body>
   <header class="site-header">
     <div class="container">
-      <a href="{{ base_path }}" class="site-title">{{ repo_name }}</a>
+      <a href="{{ base_path }}" class="site-brand" aria-label="{{ site_title }} home">
+        {% if site_avatar_url %}
+        <img class="site-avatar" src="{{ site_avatar_url }}" alt="" width="40" height="40" />
+        {% endif %}
+        <span class="site-identity">
+          <span class="site-title">{{ site_title }}</span>
+          {% if site_tagline %}
+          <span class="site-tagline">{{ site_tagline }}</span>
+          {% endif %}
+        </span>
+      </a>
       <nav class="site-nav">
         <a href="{{ base_path }}">Home</a>
         <a href="{{ base_path }}config/">Config</a>

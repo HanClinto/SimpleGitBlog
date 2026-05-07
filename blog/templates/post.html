@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ post.title }} &mdash; {{ repo_name }}{% endblock %}
+{% block title %}{{ post.title }} &mdash; {{ site_title }}{% endblock %}
 
 {% block meta %}
 <meta name="description" content="{{ post.excerpt if post.excerpt else post.title }}" />

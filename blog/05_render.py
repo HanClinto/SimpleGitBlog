@@ -355,6 +355,9 @@ def render(
 
     # --- Reconstruct typed objects ---
     owner_profile = _reconstruct_profile(profile_cache.get("data"))
+    site_title = (owner_profile.name or owner_profile.login) if owner_profile else repo_name
+    site_tagline = owner_profile.bio if owner_profile and owner_profile.bio else ""
+    site_description = site_tagline or f"{site_title} — a personal blog powered by SimpleGitBlog."
 
     writing_posts: list[dict] = issues_cache.get("posts", [])
     watching_posts: list[dict] = youtube_cache.get("posts", [])
@@ -542,6 +545,10 @@ def render(
     jinja_env.globals.update({
         "repo_url":         repo_url,
         "repo_name":        repo_name,
+        "site_title":       site_title,
+        "site_tagline":     site_tagline,
+        "site_description": site_description,
+        "site_avatar_url":  owner_profile.avatar_url if owner_profile else "",
         "base_path":        base_path,
         "generated_at":     datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "generated_in":     f"{total_elapsed:.1f}s",
