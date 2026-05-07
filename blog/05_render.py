@@ -455,20 +455,6 @@ def render(
 
     # --- Sidebar panels ---
     sidebar_panels: list[dict] = []
-    if contribution_posts:
-        sidebar_panels.append({
-            "type": "contributions",
-            "title": "Merged Elsewhere",
-            "icon": "🔀",
-            "posts": contribution_posts[:5],
-            "view_all_url": (
-                "https://github.com/search?"
-                + urllib.parse.urlencode({
-                    "q": f"author:{repo_owner} is:pr is:merged -user:{repo_owner}",
-                    "type": "pullrequests",
-                })
-            ),
-        })
     for key in _ALL_SOURCES:
         if key in feed_sources:
             continue
@@ -512,6 +498,21 @@ def render(
                 "hn_threads_url":  hn_threads_url,
                 "hn_profile_url":  hn_profile_url,
             })
+
+    if contribution_posts:
+        sidebar_panels.append({
+            "type": "contributions",
+            "title": "Merged Elsewhere",
+            "icon": "🔀",
+            "posts": contribution_posts[:5],
+            "view_all_url": (
+                "https://github.com/search?"
+                + urllib.parse.urlencode({
+                    "q": f"author:{repo_owner} is:pr is:merged -user:{repo_owner}",
+                    "type": "pullrequests",
+                })
+            ),
+        })
 
     # --- Jinja2 setup ---
     jinja_env = Environment(
