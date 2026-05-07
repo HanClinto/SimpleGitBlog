@@ -355,7 +355,8 @@ def render(
 
     # --- Reconstruct typed objects ---
     owner_profile = _reconstruct_profile(profile_cache.get("data"))
-    site_title = (owner_profile.name or owner_profile.login) if owner_profile else repo_name
+    profile_name = (owner_profile.name or owner_profile.login) if owner_profile else repo_name
+    site_title = f"Blog by {profile_name}" if owner_profile else repo_name
     site_tagline = owner_profile.bio if owner_profile and owner_profile.bio else ""
     site_description = site_tagline or f"{site_title} — a personal blog powered by SimpleGitBlog."
 
