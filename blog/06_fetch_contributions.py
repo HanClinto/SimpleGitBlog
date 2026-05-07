@@ -22,6 +22,17 @@ from blog.ingestors import github_contributions  # noqa: E402
 from blog.pipeline_cache import write_cache, emit_gha_warnings  # noqa: E402
 
 
+def env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"::warning::{name}={raw!r} is not a valid integer; using {default}.")
+        return default
+
+
 def main() -> None:
     repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
     if not repo:
@@ -30,7 +41,7 @@ def main() -> None:
 
     user = os.environ.get("GITHUB_CONTRIBUTIONS_USER", "").strip() or repo.split("/")[0]
     token = os.environ.get("GITHUB_TOKEN") or None
-    limit = int(os.environ.get("GITHUB_CONTRIBUTIONS_LIMIT", "8"))
+    limit = env_int("GITHUB_CONTRIBUTIONS_LIMIT", 8)
 
     print(f"Fetching GitHub contributions for: {user}…")
     start = time.monotonic()
