@@ -62,11 +62,19 @@ _ALL_SOURCES = ("writing", "channel", "playlists", "hn_stories", "hn_comments")
 _DEFAULT_FEED_SOURCES: frozenset[str] = frozenset({"writing", "channel", "hn_stories"})
 
 _SOURCE_META: dict[str, dict] = {
-    "writing":     {"title": "My Writing",     "icon": "✍️"},
-    "channel":     {"title": "My Videos",      "icon": "🎥"},
-    "playlists":   {"title": "My Watching",    "icon": "📺"},
-    "hn_stories":  {"title": "HN Submissions", "icon": "🗞️"},
-    "hn_comments": {"title": "HN Comments",   "icon": "💬"},
+    "writing":     {"title": "My Writing",           "icon": "✍️"},
+    "channel":     {"title": "My Videos",            "icon": "🎥"},
+    "playlists":   {
+        "title": "What I'm Watching",
+        "icon": "📺",
+        "description": "Videos I've recently enjoyed on YouTube",
+    },
+    "hn_stories":  {"title": "HN Submissions",       "icon": "🗞️"},
+    "hn_comments": {
+        "title": "HN Comments",
+        "icon": "💬",
+        "description": "Discussion comments I have recently written on Hacker News",
+    },
 }
 
 
@@ -469,6 +477,7 @@ def render(
                         "type": "playlist",
                         "title": meta["title"],
                         "icon": meta["icon"],
+                        "description": meta.get("description", ""),
                         "posts": [],
                         "view_all_url": p.get("metadata", {}).get("view_more_url", ""),
                     }
@@ -477,7 +486,7 @@ def render(
                 if len(seen[src_id]["posts"]) < _SIDEBAR_LIMIT:
                     seen[src_id]["posts"].append(p)
             # When multiple playlists are present, number the sidebar headings
-            # so readers can distinguish them ("My Watching 1", "My Watching 2", …)
+            # so readers can distinguish them ("What I'm Watching 1", "What I'm Watching 2", …)
             if len(grp_list) > 1:
                 for i, grp in enumerate(grp_list, 1):
                     grp["title"] = f"{meta['title']} {i}"
@@ -493,6 +502,7 @@ def render(
                 "type":         key,
                 "title":        meta["title"],
                 "icon":         meta["icon"],
+                "description":  meta.get("description", ""),
                 "posts":        _source_posts[key][:_SIDEBAR_LIMIT],
                 "view_all_url": view_all,
                 "hn_threads_url":  hn_threads_url,
@@ -504,6 +514,7 @@ def render(
             "type": "contributions",
             "title": "Merged Elsewhere",
             "icon": "🔀",
+            "description": "My open-source contributions into repositories owned by others",
             "posts": contribution_posts[:5],
             "view_all_url": (
                 "https://github.com/search?"

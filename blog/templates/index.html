@@ -140,7 +140,7 @@
 
 {% for panel in sidebar_panels %}
 <section class="sidebar-section" id="sidebar-{{ panel.type }}-{{ loop.index }}">
-  <h2 class="sidebar-section__heading">
+  <h2 class="sidebar-section__heading"{% if panel.description %} title="{{ panel.description }}"{% endif %}>
     <span aria-hidden="true">{{ panel.icon }}</span> {{ panel.title }}
   </h2>
 
