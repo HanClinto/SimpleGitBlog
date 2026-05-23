@@ -378,7 +378,24 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> tuple[list[dict], 
     for issue in visible_issues:
         num = issue["number"]
         print(f"  Processing issue #{num}: {issue['title']}")
-        raw_comments = _fetch_comments(repo, num, headers)
+        try:
+            raw_comments = _fetch_comments(repo, num, headers)
+        except requests.RequestException as exc:
+            if "Authorization" not in headers:
+                raise
+            status = (
+                exc.response.status_code
+                if isinstance(exc, requests.HTTPError) and exc.response is not None
+                else "unknown"
+            )
+            msg = (
+                f"Warning: authenticated GitHub comments fetch failed for issue #{num}"
+                f" (HTTP {status}). Retrying with the public API."
+            )
+            print(f"  {msg}", file=sys.stderr)
+            warnings.append(msg)
+            headers = _github_headers(None)
+            raw_comments = _fetch_comments(repo, num, headers)
         post = _process_issue(issue, raw_comments, blocked, fork_owners, repo, repo_name, headers)
         posts.append(post)
 
