@@ -324,7 +324,24 @@ def ingest(repo: str, token: str | None, config_dir: Path) -> tuple[list[dict], 
     repo_owner = repo.split("/")[0]
     repo_name = repo.split("/")[-1]
 
-    raw_issues = _fetch_all_issues(repo, headers)
+    try:
+        raw_issues = _fetch_all_issues(repo, headers)
+    except requests.RequestException as exc:
+        if not token:
+            raise
+        status = (
+            exc.response.status_code
+            if isinstance(exc, requests.HTTPError) and exc.response is not None
+            else "unknown"
+        )
+        msg = (
+            f"Warning: authenticated GitHub Issues fetch failed (HTTP {status})."
+            " Retrying with the public API."
+        )
+        print(f"  {msg}", file=sys.stderr)
+        warnings.append(msg)
+        headers = _github_headers(None)
+        raw_issues = _fetch_all_issues(repo, headers)
     print(f"  Found {len(raw_issues)} open issue(s).")
 
     blocked = _load_blocked_users(config_dir)
