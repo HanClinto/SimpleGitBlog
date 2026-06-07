@@ -34,6 +34,18 @@
         <a href="{{ base_path }}">Home</a>
         <a href="{{ base_path }}config/">Config</a>
         <a href="{{ repo_url }}" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a
+          href="{{ repo_url }}/issues/new"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="site-nav__icon-link"
+          title="Write a new post"
+          aria-label="Write a new post"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 2.474l-7.94 7.94a1.75 1.75 0 0 1-.848.46l-2.41.603a.75.75 0 0 1-.91-.91l.603-2.41a1.75 1.75 0 0 1 .46-.848Zm1.414 1.06a.25.25 0 0 0-.353 0l-.69.69 1.414 1.415.69-.69a.25.25 0 0 0 0-.354Zm-.75 3.165-1.414-1.414-6.761 6.76a.25.25 0 0 0-.066.122l-.333 1.332 1.332-.333a.25.25 0 0 0 .121-.066Z"></path>
+          </svg>
+        </a>
         {% if not has_social_links %}
         <a
           href="{{ base_path }}config/"
