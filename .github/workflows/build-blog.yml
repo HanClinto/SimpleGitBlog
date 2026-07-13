@@ -110,6 +110,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           BASE_PATH: ${{ steps.pages-domain.outputs.base_path }}
+          SITE_URL: ${{ steps.pages-domain.outputs.custom_domain != '' && format('https://{0}', steps.pages-domain.outputs.custom_domain) || '' }}
           YOUTUBE_PLAYLIST_IDS: ${{ vars.YOUTUBE_PLAYLIST_IDS }}
           FEED_SOURCES: ${{ vars.FEED_SOURCES }}
           BLOG_CONFIGURED: ${{ vars.BLOG_CONFIGURED }}

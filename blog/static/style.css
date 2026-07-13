@@ -100,6 +100,43 @@ img { max-width: 100%; height: auto; }
 }
 .site-nav a:hover { color: #fff; }
 
+/* --- Feed / RSS links ------------------------------------- */
+.feed-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  color: #f97316 !important;
+  font-weight: 600;
+}
+.feed-link:hover { color: #fb923c !important; }
+.feed-link svg { fill: currentColor; flex: 0 0 auto; }
+
+.feed-subscribe {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.feed-subscribe__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25em 0.7em;
+  border-radius: 99px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.feed-subscribe__link:hover {
+  background: #ffedd5;
+  border-color: #fb923c;
+  color: #9a3412;
+}
+.feed-subscribe__link svg { fill: currentColor; flex: 0 0 auto; }
+
 .setup-warning {
   background: #fef08a;
   color: #713f12 !important;

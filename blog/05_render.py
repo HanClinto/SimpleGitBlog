@@ -347,6 +347,7 @@ def render(
     feed_sources: frozenset[str],
     run_id: str,
     base_path: str,
+    site_url: str,
 ) -> None:
     render_start = time.monotonic()
 
@@ -563,6 +564,8 @@ def render(
         "site_description": site_description,
         "site_avatar_url":  owner_profile.avatar_url if owner_profile else "",
         "base_path":        base_path,
+        "site_url":         site_url,
+        "profile_name":     profile_name,
         "generated_at":     datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "generated_in":     f"{total_elapsed:.1f}s",
         "has_social_links": bool(owner_profile and owner_profile.social_links),
@@ -664,6 +667,14 @@ def render(
     (config_page_dir / "index.html").write_text(config_html, encoding="utf-8")
     print("Wrote config/index.html")
 
+    # --- Atom feed ---
+    feed_tmpl = jinja_env.get_template("feed.xml")
+    (output_dir / "feed.xml").write_text(
+        feed_tmpl.render(feed_posts=feed_posts[:20]),
+        encoding="utf-8",
+    )
+    print("Wrote feed.xml")
+
     _write_nojekyll(output_dir)
     print("Wrote .nojekyll")
 
@@ -697,10 +708,15 @@ def main() -> None:
     run_id      = os.environ.get("GITHUB_RUN_ID", "").strip()
     feed_sources = _parse_feed_sources(os.environ.get("FEED_SOURCES") or None)
 
-    repo_name = repo.split("/")[-1]
+    repo_name  = repo.split("/")[-1]
+    repo_owner = repo.split("/")[0]
     base_path = os.environ.get("BASE_PATH", f"/{repo_name}/")
     if not base_path.endswith("/"):
         base_path += "/"
+
+    site_url = os.environ.get("SITE_URL", "").strip().rstrip("/")
+    if not site_url:
+        site_url = f"https://{repo_owner}.github.io"
 
     render(
         repo=repo,
@@ -708,6 +724,7 @@ def main() -> None:
         feed_sources=feed_sources,
         run_id=run_id,
         base_path=base_path,
+        site_url=site_url,
     )
 
 
