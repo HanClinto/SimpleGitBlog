@@ -57,7 +57,7 @@ _PAGE_SIZE = 10
 # Content routing
 # ---------------------------------------------------------------------------
 
-_ALL_SOURCES = ("writing", "channel", "playlists", "hn_stories", "hn_comments", "hn_favorites")
+_ALL_SOURCES = ("writing", "channel", "playlists", "hn_stories", "hn_favorites", "hn_comments")
 
 _DEFAULT_FEED_SOURCES: frozenset[str] = frozenset({"writing", "channel", "hn_stories"})
 
@@ -486,6 +486,8 @@ def render(
     sidebar_panels: list[dict] = []
     for key in _ALL_SOURCES:
         if key in feed_sources:
+            continue
+        if not _source_posts.get(key):
             continue
         meta = _SOURCE_META[key]
         if key == "playlists":

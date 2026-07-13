@@ -692,10 +692,6 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
 
 /* --- Page sidebar ----------------------------------------- */
 .page-sidebar {
-  position: sticky;
-  top: 1.5rem;
-  max-height: calc(100vh - 3rem);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -1018,7 +1014,6 @@ a.config-detail:hover { color: #0969da; }
   }
 
   .page-sidebar {
-    position: static;
     border-top: 2px solid #e2e8f0;
     padding-top: 2rem;
   }
