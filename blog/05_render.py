@@ -57,7 +57,7 @@ _PAGE_SIZE = 10
 # Content routing
 # ---------------------------------------------------------------------------
 
-_ALL_SOURCES = ("writing", "channel", "playlists", "hn_stories", "hn_favorites", "hn_comments")
+_ALL_SOURCES = ("hn_favorites", "writing", "channel", "playlists", "hn_stories", "hn_comments")
 
 _DEFAULT_FEED_SOURCES: frozenset[str] = frozenset({"writing", "channel", "hn_stories"})
 
