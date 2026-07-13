@@ -107,6 +107,9 @@ jobs:
           GITHUB_CONTRIBUTIONS_USER: ${{ vars.GITHUB_CONTRIBUTIONS_USER }}
           GITHUB_CONTRIBUTIONS_LIMIT: ${{ vars.GITHUB_CONTRIBUTIONS_LIMIT }}
 
+      - name: "Cooldown — Let IP reputation recover before HN Favorites"
+        run: sleep 30
+
       - name: "Stage 07 — Fetch HN Favorites"
         continue-on-error: true
         run: python blog/07_fetch_hn_favorites.py
