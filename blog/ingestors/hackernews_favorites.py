@@ -186,17 +186,22 @@ def _fetch_page(url: str, warnings: list[str]) -> tuple[str, str | None]:
         try:
             resp = requests.get(url, timeout=30, headers=_REQUEST_HEADERS)
             if resp.status_code == 429 and attempt < 2:
+                print(f"  [Attempt {attempt + 1}/3] Got 429, sleeping {3 * (attempt + 1)}s…")
                 time.sleep(3 * (attempt + 1))  # 3s then 6s
                 continue
+            if resp.status_code != 200:
+                print(f"  [Attempt {attempt + 1}/3] HTTP {resp.status_code}")
             resp.raise_for_status()
         except requests.RequestException as exc:
             if attempt < 2:
+                print(f"  [Attempt {attempt + 1}/3] Error, retrying: {exc}")
                 time.sleep(3 * (attempt + 1))
                 continue
             msg = f"Warning: HN favorites fetch error ({url}): {exc}"
             print(f"  {msg}")
             warnings.append(msg)
             return "", None
+        print(f"  [Attempt {attempt + 1}/3] Success: {resp.status_code} ({len(resp.text)} bytes)")
         return resp.text, None
     return "", None
 

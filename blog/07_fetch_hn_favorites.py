@@ -50,13 +50,18 @@ def main() -> None:
     print(f"  {len(posts)} favorite(s) ingested.")
     emit_gha_warnings(warnings)
 
-    write_cache("hn_favorites", {
-        "stage": "hn_favorites",
-        "posts": posts,
-        "warnings": warnings,
-        "elapsed": elapsed,
-        "skipped": False,
-    })
+    # Only cache if we got results; otherwise let next run try fresh
+    if posts:
+        write_cache("hn_favorites", {
+            "stage": "hn_favorites",
+            "posts": posts,
+            "warnings": warnings,
+            "elapsed": elapsed,
+            "skipped": False,
+        })
+    else:
+        print("  ⚠️  No results; skipping cache write to allow next run to retry.")
+
     print(f"  Stage complete in {elapsed:.1f}s ({len(warnings)} warning(s)).")
 
 
