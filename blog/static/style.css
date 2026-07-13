@@ -137,6 +137,19 @@ img { max-width: 100%; height: auto; }
 }
 .feed-subscribe__link svg { fill: currentColor; flex: 0 0 auto; }
 
+.feed-subscribe__link--all {
+  font-size: 0.75rem;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+  font-weight: 500;
+}
+.feed-subscribe__link--all:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
 .setup-warning {
   background: #fef08a;
   color: #713f12 !important;
@@ -681,6 +694,8 @@ main.container { padding-top: 2.5rem; padding-bottom: 2.5rem; }
 .page-sidebar {
   position: sticky;
   top: 1.5rem;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;

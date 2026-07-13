@@ -57,7 +57,7 @@ _PAGE_SIZE = 10
 # Content routing
 # ---------------------------------------------------------------------------
 
-_ALL_SOURCES = ("writing", "channel", "playlists", "hn_stories", "hn_comments")
+_ALL_SOURCES = ("writing", "channel", "playlists", "hn_stories", "hn_comments", "hn_favorites")
 
 _DEFAULT_FEED_SOURCES: frozenset[str] = frozenset({"writing", "channel", "hn_stories"})
 
@@ -74,6 +74,11 @@ _SOURCE_META: dict[str, dict] = {
         "title": "HN Comments",
         "icon": "💬",
         "description": "Discussion comments I have recently written on Hacker News",
+    },
+    "hn_favorites": {
+        "title": "HN Favorites",
+        "icon": "⭐",
+        "description": "Stories I've favorited on Hacker News",
     },
 }
 
@@ -361,6 +366,7 @@ def render(
     youtube_cache = read_cache("youtube")
     hn_cache      = read_cache("hn")
     contributions_cache = read_cache("contributions")
+    hn_favorites_cache  = read_cache("hn_favorites")
 
     # --- Reconstruct typed objects ---
     owner_profile = _reconstruct_profile(profile_cache.get("data"))
@@ -373,6 +379,7 @@ def render(
     watching_posts: list[dict] = youtube_cache.get("posts", [])
     reading_posts: list[dict]  = hn_cache.get("posts", [])
     contribution_posts: list[dict] = contributions_cache.get("posts", [])
+    hn_favorites_posts: list[dict] = hn_favorites_cache.get("posts", [])
 
     channel_posts  = [p for p in watching_posts if p.get("metadata", {}).get("source_type") == "channel"]
     playlist_posts = [p for p in watching_posts if p.get("metadata", {}).get("source_type") == "playlist"]
@@ -398,13 +405,15 @@ def render(
         "youtube": "YouTube",
         "hn":      "Hacker News",
         "contributions": "GitHub Contributions",
+        "hn_favorites":  "HN Favorites",
     }
     pipeline_stages: list[dict] = []
     all_warnings: list[str] = []
-    for key in ("profile", "issues", "youtube", "hn", "contributions"):
+    for key in ("profile", "issues", "youtube", "hn", "contributions", "hn_favorites"):
         cache = {"profile": profile_cache, "issues": issues_cache,
                  "youtube": youtube_cache, "hn": hn_cache,
-                 "contributions": contributions_cache}[key]
+                 "contributions": contributions_cache,
+                 "hn_favorites": hn_favorites_cache}[key]
         stage_warnings = cache.get("warnings", [])
         all_warnings.extend(stage_warnings)
         pipeline_stages.append({
@@ -414,12 +423,17 @@ def render(
             "skipped":  cache.get("skipped", False),
         })
 
-    # --- All posts merged ---
-    all_posts = sorted(
-        writing_posts + channel_posts + playlist_posts + reading_posts,
+    # --- All posts merged (deduplicated by post_id) ---
+    _seen_post_ids: set[str] = set()
+    all_posts: list[dict] = []
+    for _p in sorted(
+        writing_posts + channel_posts + playlist_posts + reading_posts + hn_favorites_posts,
         key=lambda p: p["created_at"],
         reverse=True,
-    )
+    ):
+        if _p["post_id"] not in _seen_post_ids:
+            _seen_post_ids.add(_p["post_id"])
+            all_posts.append(_p)
 
     # Inject synthetic source-type labels
     for post in all_posts:
@@ -430,7 +444,12 @@ def render(
             synthetic = "Video"
         elif src == "hackernews":
             hn_type = post.get("metadata", {}).get("hn_type", "story")
-            synthetic = "Link Submission" if hn_type == "story" else "HN Comment"
+            if hn_type == "story":
+                synthetic = "Link Submission"
+            elif hn_type == "comment":
+                synthetic = "HN Comment"
+            else:
+                synthetic = "HN Favorite"
         else:
             continue
         if synthetic not in post["labels"]:
@@ -447,11 +466,12 @@ def render(
     hn_profile_url   = f"https://news.ycombinator.com/user?id={_hn_user}"      if _hn_user else None
 
     _source_posts: dict[str, list[dict]] = {
-        "writing":     writing_posts,
-        "channel":     channel_posts,
-        "playlists":   playlist_posts,
-        "hn_stories":  hn_stories,
-        "hn_comments": hn_comments,
+        "writing":      writing_posts,
+        "channel":      channel_posts,
+        "playlists":    playlist_posts,
+        "hn_stories":   hn_stories,
+        "hn_comments":  hn_comments,
+        "hn_favorites": hn_favorites_posts,
     }
 
     # --- Main feed ---
@@ -494,10 +514,11 @@ def render(
             sidebar_panels.extend(grp_list)
         else:
             view_all = {
-                "writing":     f"{repo_url}/issues",
-                "channel":     None,
-                "hn_stories":  hn_submitted_url,
-                "hn_comments": hn_threads_url,
+                "writing":      f"{repo_url}/issues",
+                "channel":      None,
+                "hn_stories":   hn_submitted_url,
+                "hn_comments":  hn_threads_url,
+                "hn_favorites": f"https://news.ycombinator.com/favorites?id={_hn_user}" if _hn_user else None,
             }.get(key)
             sidebar_panels.append({
                 "type":         key,
@@ -667,13 +688,25 @@ def render(
     (config_page_dir / "index.html").write_text(config_html, encoding="utf-8")
     print("Wrote config/index.html")
 
-    # --- Atom feed ---
+    # --- Atom feed (configured sources) ---
     feed_tmpl = jinja_env.get_template("feed.xml")
     (output_dir / "feed.xml").write_text(
-        feed_tmpl.render(feed_posts=feed_posts[:20]),
+        feed_tmpl.render(feed_posts=feed_posts[:20], feed_path="feed.xml"),
         encoding="utf-8",
     )
     print("Wrote feed.xml")
+
+    # --- Atom feed (all sources including favorites) ---
+    _all_feed_posts = sorted(
+        {p["post_id"]: p for key in _ALL_SOURCES for p in _source_posts[key]}.values(),
+        key=lambda p: p["created_at"],
+        reverse=True,
+    )
+    (output_dir / "feed-all.xml").write_text(
+        feed_tmpl.render(feed_posts=_all_feed_posts[:20], feed_path="feed-all.xml"),
+        encoding="utf-8",
+    )
+    print("Wrote feed-all.xml")
 
     _write_nojekyll(output_dir)
     print("Wrote .nojekyll")
