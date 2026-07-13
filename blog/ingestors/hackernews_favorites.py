@@ -10,6 +10,7 @@ Pagination is handled automatically up to _MAX_ITEMS items.
 """
 
 import re
+import time
 import urllib.parse
 from html.parser import HTMLParser
 
@@ -19,6 +20,19 @@ from blog.utils import extract_excerpt, format_date, format_datetime
 
 _HN_BASE = "https://news.ycombinator.com"
 _MAX_ITEMS = 30
+_REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +119,8 @@ class _ListingParser(HTMLParser):
         if tag == "span" and "age" in classes:
             date = a.get("title", "")
             if date:
-                # Ensure a timezone suffix for RFC 3339 compliance
+                # HN title format: "YYYY-MM-DDTHH:MM:SS UNIX_EPOCH" — take only the ISO part
+                date = date.split()[0]
                 if "T" in date and not (
                     date.endswith("Z") or "+" in date[-7:] or "-" in date[-7:]
                 ):
@@ -164,24 +179,26 @@ class _ListingParser(HTMLParser):
 
 def _fetch_page(url: str, warnings: list[str]) -> tuple[str, str | None]:
     """
-    Fetch one page of the HN favorites listing.
+    Fetch one page of the HN favorites listing with simple retry on 429.
     Returns ``(html_text, next_page_url_or_None)``.
     """
-    try:
-        resp = requests.get(url, timeout=30, headers={
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            )
-        })
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        msg = f"Warning: HN favorites fetch error ({url}): {exc}"
-        print(f"  {msg}")
-        warnings.append(msg)
-        return "", None
-    return resp.text, None
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, timeout=30, headers=_REQUEST_HEADERS)
+            if resp.status_code == 429 and attempt < 2:
+                time.sleep(3 * (attempt + 1))  # 3s then 6s
+                continue
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            if attempt < 2:
+                time.sleep(3 * (attempt + 1))
+                continue
+            msg = f"Warning: HN favorites fetch error ({url}): {exc}"
+            print(f"  {msg}")
+            warnings.append(msg)
+            return "", None
+        return resp.text, None
+    return "", None
 
 
 def _scrape_favorites(username: str, max_items: int, warnings: list[str]) -> list[dict]:

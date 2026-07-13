@@ -37,6 +37,14 @@ jobs:
           restore-keys: |
             youtube-cache-
 
+      - name: Restore HN Favorites cache
+        uses: actions/cache@v4
+        with:
+          path: _cache/hn_favorites.json
+          key: hn-favorites-cache-${{ github.run_id }}
+          restore-keys: |
+            hn-favorites-cache-
+
       - name: Detect GitHub Pages domain
         id: pages-domain
         env:
