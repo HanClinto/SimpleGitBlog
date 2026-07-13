@@ -168,7 +168,13 @@ def _fetch_page(url: str, warnings: list[str]) -> tuple[str, str | None]:
     Returns ``(html_text, next_page_url_or_None)``.
     """
     try:
-        resp = requests.get(url, timeout=30, headers={"User-Agent": "SimpleGitBlog/1.0"})
+        resp = requests.get(url, timeout=30, headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            )
+        })
         resp.raise_for_status()
     except requests.RequestException as exc:
         msg = f"Warning: HN favorites fetch error ({url}): {exc}"

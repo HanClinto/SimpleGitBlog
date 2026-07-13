@@ -487,8 +487,6 @@ def render(
     for key in _ALL_SOURCES:
         if key in feed_sources:
             continue
-        if not _source_posts.get(key):
-            continue
         meta = _SOURCE_META[key]
         if key == "playlists":
             seen: dict[str, dict] = {}
