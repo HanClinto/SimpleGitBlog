@@ -73,7 +73,7 @@ jobs:
         continue-on-error: true
         run: python blog/07_fetch_hn_favorites.py
         env:
-          HN_USERNAME: ${{ vars.HN_USERNAME }}
+          HN_USERNAME: HanClinto
 
       - name: "Stage 01 — Fetch GitHub profile"
         continue-on-error: true
